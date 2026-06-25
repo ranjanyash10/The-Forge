@@ -1,0 +1,62 @@
+# Root .gitignore for The Forge Monorepo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Backend Web files
+backend-web/node_modules/
+backend-web/.pnp
+backend-web/.pnp.*
+backend-web/.yarn/*
+!backend-web/.yarn/patches
+!backend-web/.yarn/plugins
+!backend-web/.yarn/releases
+!backend-web/.yarn/versions
+backend-web/coverage/
+backend-web/.next/
+backend-web/out/
+backend-web/build/
+backend-web/*.pem
+backend-web/npm-debug.log*
+backend-web/yarn-debug.log*
+backend-web/yarn-error.log*
+backend-web/.pnpm-debug.log*
+backend-web/.env*
+backend-web/.vercel
+backend-web/*.tsbuildinfo
+backend-web/next-env.d.ts
+
+# SQLite Database
+backend-web/prisma/dev.db
+backend-web/prisma/dev.db-journal
+
+# Mobile files
+frontend-mobile/*.class
+frontend-mobile/*.log
+frontend-mobile/*.pyc
+frontend-mobile/*.swp
+frontend-mobile/.atom/
+frontend-mobile/.build/
+frontend-mobile/.buildlog/
+frontend-mobile/.history
+frontend-mobile/.svn/
+frontend-mobile/.swiftpm/
+frontend-mobile/migrate_working_dir/
+frontend-mobile/*.iml
+frontend-mobile/*.ipr
+frontend-mobile/*.iws
+frontend-mobile/.idea/
+frontend-mobile/**/doc/api/
+frontend-mobile/**/ios/Flutter/.last_build_id
+frontend-mobile/.dart_tool/
+frontend-mobile/.flutter-plugins-dependencies
+frontend-mobile/.pub-cache/
+frontend-mobile/.pub/
+frontend-mobile/build/
+frontend-mobile/coverage/
+frontend-mobile/app.*.symbols
+frontend-mobile/app.*.map.json
+frontend-mobile/android/app/debug/
+frontend-mobile/android/app/profile/
+frontend-mobile/android/app/release/
