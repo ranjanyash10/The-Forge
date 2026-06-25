@@ -1,11 +1,11 @@
 {
-    "name": "frontend_mobile",
-    "short_name": "frontend_mobile",
+    "name": "The Forge",
+    "short_name": "The Forge",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#02040A",
+    "theme_color": "#A855F7",
+    "description": "A real-life RPG progress tracker.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
