@@ -1243,7 +1243,7 @@ class _HubScreenState extends State<HubScreen> with SingleTickerProviderStateMix
                   border: Border.all(color: const Color(0xFF1E293B)),
                   borderRadius: BorderRadius.circular(3),
                 ),
-                child: Text('LVL $lvl', style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 7, fontWeight: FontWeight.black)),
+                child: Text('LVL $lvl', style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 7, fontWeight: FontWeight.w900)),
               ),
             ],
           ),
