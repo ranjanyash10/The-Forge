@@ -89,7 +89,7 @@ Respond in strict JSON format with these exact fields:
 {
   "class": "Name of character class (e.g. The Scholar-King, The Cyber-Monarch, The Iron Gladiator)",
   "archetype": "Brief core archetype classification (e.g. Builder, Sovereign, Warrior, Hunter)",
-  "biography": "A short, epic 3-4 sentence narrative biography outlining their potential. Do not simply restate their inputs; write high-quality, tasteful, progress-fantasy prose describing their transition.",
+  "biography": "A short, epic 3-4 sentence narrative biography outlining their potential. Do not simply restate their inputs; write high-quality, tasteful, progress-fantasy prose describing their transition. Focus on al the strengths and weaknesses and what they aspire to do. Study the words like an llm and respond.",
   "avatarPrompt": "A highly detailed text-to-image prompt to generate an avatar portrait for this character in DALL-E, focusing on glowing runes, RPG aesthetic, premium illustration, and dark atmospheric lighting",
   "initialSkills": [
     {
@@ -130,11 +130,11 @@ Respond in strict JSON format with these exact fields:
 
     // Determine target domains
     const isWealth = cleanAsp.includes('saas') || cleanAsp.includes('dev') || cleanAsp.includes('code') || cleanAsp.includes('program') || cleanAsp.includes('millionaire') || cleanAsp.includes('business') || cleanAsp.includes('money') || cleanAsp.includes('startup') || cleanAsp.includes('finance') || cleanAsp.includes('wealth') || cleanStr.includes('code') || cleanStr.includes('dev')
-    
+
     const isBody = cleanAsp.includes('shredded') || cleanAsp.includes('mma') || cleanAsp.includes('workout') || cleanAsp.includes('gym') || cleanAsp.includes('fitness') || cleanAsp.includes('muscle') || cleanAsp.includes('strength') || cleanAsp.includes('box') || cleanAsp.includes('fight') || cleanAsp.includes('run') || cleanWk.includes('fat') || cleanWk.includes('weight') || cleanWk.includes('lazy')
-    
+
     const isInfluence = cleanAsp.includes('charismatic') || cleanAsp.includes('lead') || cleanAsp.includes('speak') || cleanAsp.includes('talk') || cleanAsp.includes('network') || cleanAsp.includes('people') || cleanAsp.includes('relationship') || cleanAsp.includes('influence')
-    
+
     const isMind = cleanAsp.includes('thinker') || cleanAsp.includes('learn') || cleanAsp.includes('study') || cleanAsp.includes('read') || cleanAsp.includes('focus') || cleanAsp.includes('concentration') || cleanAsp.includes('discipline') || cleanStr.includes('discipline') || cleanStr.includes('focus') || cleanWk.includes('motivation') || cleanWk.includes('focus')
 
     // 1. Determine Class & Archetype
@@ -193,7 +193,7 @@ Respond in strict JSON format with these exact fields:
 
     // 3. Determine Initial Skills
     const initialSkills: InitialSkill[] = []
-    
+
     if (isWealth) {
       initialSkills.push({
         name: 'SaaS Synthesis',
@@ -223,7 +223,7 @@ Respond in strict JSON format with these exact fields:
         description: 'Projecting authority and charismatic resonance in all human interactions and leadership.'
       })
     }
-    
+
     if (initialSkills.length < 2) {
       initialSkills.push({
         name: 'System Synchronization',
@@ -234,7 +234,7 @@ Respond in strict JSON format with these exact fields:
 
     // 4. Determine Initial Quests
     const initialQuests: InitialQuest[] = []
-    
+
     if (isWealth) {
       initialQuests.push({
         title: 'Architect the MVP',
@@ -321,7 +321,7 @@ Analyze their query: "${skillRequest}"
 Determine:
 1. Category: Must be one of: BODY, WEALTH, MIND, INFLUENCE.
 2. Difficulty: Must be one of: E, D, C, B, A, S (E is easiest, S is legendary).
-3. A brief, epic description of the skill in RPG terms.
+3. Think what the skill is about and how it can affect the user then give brief, epic description of the skill in RPG terms.
 
 Respond in strict JSON format:
 {
@@ -348,7 +348,7 @@ Respond in strict JSON format:
     let category: 'BODY' | 'WEALTH' | 'MIND' | 'INFLUENCE' = 'MIND'
     let difficulty: 'E' | 'D' | 'C' | 'B' | 'A' | 'S' = 'D'
     const cleanRequest = skillRequest.toLowerCase()
-    
+
     if (cleanRequest.includes('speak') || cleanRequest.includes('talk') || cleanRequest.includes('lead') || cleanRequest.includes('network')) {
       category = 'INFLUENCE'
       difficulty = 'C'
