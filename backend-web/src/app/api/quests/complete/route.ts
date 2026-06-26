@@ -160,6 +160,108 @@ export async function POST(request: Request) {
         }
       }
 
+      // --- Start Refactored Trainable Attribute Updates ---
+      let stateJsonStr = character.state_json || '{}'
+      let parsedState: any = {}
+      try {
+        parsedState = JSON.parse(stateJsonStr)
+      } catch (e) {}
+
+      if (!parsedState.attributes) {
+        parsedState.attributes = {
+          "Strength": { "level": 10, "xp": 0, "trend": "Stable", "title": null, "history": [] },
+          "Endurance": { "level": 10, "xp": 0, "trend": "Stable", "title": null, "history": [] },
+          "Agility": { "level": 10, "xp": 0, "trend": "Stable", "title": null, "history": [] },
+          "Vitality": { "level": 10, "xp": 0, "trend": "Stable", "title": null, "history": [] },
+          "Focus": { "level": 10, "xp": 0, "trend": "Stable", "title": null, "history": [] },
+          "Knowledge": { "level": 10, "xp": 0, "trend": "Stable", "title": null, "history": [] },
+          "Creativity": { "level": 10, "xp": 0, "trend": "Stable", "title": null, "history": [] },
+          "Resilience": { "level": 10, "xp": 0, "trend": "Stable", "title": null, "history": [] },
+          "Charisma": { "level": 10, "xp": 0, "trend": "Stable", "title": null, "history": [] }
+        }
+      }
+
+      if (!parsedState.dynamicStates) {
+        parsedState.dynamicStates = { "energy": 70, "stress": 45, "confidence": 60, "fulfillment": 50, "motivation": 70 }
+      }
+
+      const matchingAttrs: string[] = []
+      let skillCategory = ''
+
+      if (skillId) {
+        const skill = await prisma.skill.findFirst({ where: { id: skillId } })
+        if (skill) skillCategory = skill.category
+      }
+
+      const cleanTitle = quest.title.toLowerCase()
+
+      if (skillCategory === 'BODY' || cleanTitle.includes('workout') || cleanTitle.includes('run') || cleanTitle.includes('gym') || cleanTitle.includes('fit') || cleanTitle.includes('protein') || cleanTitle.includes('box') || cleanTitle.includes('active')) {
+        matchingAttrs.push('Strength', 'Endurance', 'Agility', 'Vitality')
+      }
+      if (skillCategory === 'WEALTH' || skillCategory === 'MIND' || cleanTitle.includes('code') || cleanTitle.includes('dev') || cleanTitle.includes('read') || cleanTitle.includes('study') || cleanTitle.includes('focus') || cleanTitle.includes('learn') || cleanTitle.includes('write')) {
+        matchingAttrs.push('Focus', 'Knowledge', 'Creativity')
+      }
+      if (skillCategory === 'INFLUENCE' || cleanTitle.includes('network') || cleanTitle.includes('speak') || cleanTitle.includes('pitch') || cleanTitle.includes('talk') || cleanTitle.includes('call') || cleanTitle.includes('present')) {
+        matchingAttrs.push('Charisma', 'Resilience')
+      }
+
+      if (matchingAttrs.length === 0) {
+        matchingAttrs.push('Focus', 'Resilience')
+      }
+
+      const attrXpReward = Math.max(5, Math.round(xpReward * 0.15))
+      matchingAttrs.forEach(attrName => {
+        const attrObj = parsedState.attributes[attrName]
+        if (attrObj) {
+          attrObj.xp += attrXpReward
+          let reqXp = attrObj.level * 500
+          while (attrObj.xp >= reqXp) {
+            attrObj.xp -= reqXp
+            attrObj.level += 1
+            reqXp = attrObj.level * 500
+          }
+
+          if (attrName === 'Strength' && attrObj.level >= 15) attrObj.title = 'Warrior'
+          if (attrName === 'Strength' && attrObj.level >= 25) attrObj.title = 'Titan'
+          if (attrName === 'Focus' && attrObj.level >= 15) attrObj.title = 'Deep Thinker'
+          if (attrName === 'Focus' && attrObj.level >= 25) attrObj.title = 'Mastermind'
+          if (attrName === 'Creativity' && attrObj.level >= 15) attrObj.title = 'Inventor'
+          if (attrName === 'Creativity' && attrObj.level >= 25) attrObj.title = 'Visionary'
+
+          if (!attrObj.history) attrObj.history = []
+          attrObj.history.push({
+            date: now.toISOString(),
+            level: attrObj.level,
+            xp: attrObj.xp
+          })
+
+          attrObj.trend = 'Stable'
+          const weekAgo = new Date()
+          weekAgo.setDate(weekAgo.getDate() - 7)
+          const recentLogs = attrObj.history.filter((h: any) => new Date(h.date) >= weekAgo)
+          if (recentLogs.length > 2) {
+            attrObj.trend = 'Improving'
+          } else {
+            const fortAgo = new Date()
+            fortAgo.setDate(fortAgo.getDate() - 14)
+            const activeLogs = attrObj.history.filter((h: any) => new Date(h.date) >= fortAgo)
+            if (activeLogs.length === 0) {
+              attrObj.trend = 'Declining'
+            }
+          }
+        }
+      })
+
+      const ds = parsedState.dynamicStates
+      ds.fulfillment = Math.min(100, ds.fulfillment + Math.max(5, Math.round(xpReward * 0.1)))
+      ds.confidence = Math.min(100, ds.confidence + Math.max(3, Math.round(xpReward * 0.05)))
+      ds.motivation = Math.min(100, ds.motivation + Math.max(5, Math.round(xpReward * 0.08)))
+      ds.stress = Math.max(0, ds.stress - Math.max(4, Math.round(xpReward * 0.08)))
+      ds.energy = Math.max(10, ds.energy - 5)
+
+      if (!parsedState.values) parsedState.values = ["Growth", "Discipline"]
+      // --- End Trainable Attribute Updates ---
+
       await prisma.character.update({
         where: { id: character.id },
         data: {
@@ -178,7 +280,8 @@ export async function POST(request: Request) {
           willpower_xp: wilXp,
           willpower_lvl: wilLvl,
           adaptability_xp: adapXp,
-          adaptability_lvl: adapLvl
+          adaptability_lvl: adapLvl,
+          state_json: JSON.stringify(parsedState)
         }
       })
     }

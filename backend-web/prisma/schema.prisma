@@ -25,6 +25,10 @@ model User {
   titles        UserTitle[]
   dailyLogs     DailyLog[]
   chapters      WeeklyChapter[]
+  systemMessages SystemMessage[]
+  bossBattles   BossBattle[]
+  codexEntries  CodexEntry[]
+  systemAssertions SystemAssertion[]
 }
 
 model Character {
@@ -38,6 +42,7 @@ model Character {
   weight          String?
   height          String?
   fitness_goals   String?
+  state_json      String?  @default("{}")
   momentum        Int      @default(50)
   last_action     DateTime @default(now())
 
@@ -138,6 +143,8 @@ model Quest {
   status      String    // ACTIVE, COMPLETED, FAILED
   quest_type  String    // MAIN, SIDE, ELITE, BOSS
   due_date    DateTime?
+  reason      String?
+  is_hidden   Boolean   @default(false)
   created_at  DateTime  @default(now())
 
   user        User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
@@ -204,4 +211,123 @@ model WeeklyChapter {
   created_at     DateTime @default(now())
 
   user           User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model SystemMessage {
+  id         String   @id @default(uuid())
+  user_id    String
+  sender     String   // "SYSTEM" or "USER"
+  content    String
+  created_at DateTime @default(now())
+
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model BossBattle {
+  id                  String         @id @default(uuid())
+  userId              String         @map("user_id")
+  title               String         
+  description         String
+  epicManifesto       String         @map("epic_manifesto")
+  
+  // Refactored Engine Analytics
+  difficultyScore     Int            @map("difficulty_score")
+  calculatedRank      String         @map("calculated_rank") // E, D, C, B, A, S, SS, SSS
+  preparationScore    Int            @default(0) @map("preparation_score")
+  victoryProbability  Int            @map("victory_probability")
+  predictionReasoning String         @default("[]") @map("prediction_reasoning") // SQLite compatible Json String
+  
+  // Core Operational States
+  status              String         @default("IDENTIFIED") // IDENTIFIED, PREPARATION, ACTIVE, RESOLVED
+  outcome             String?        @map("outcome")        // VICTORIOUS, WITHDRAWN, INTERRUPTED, OVERWHELMED
+  originSource        String         @default("USER_DECLARATION") // USER_DECLARATION, SYSTEM_EMERGENT
+  
+  attemptsCount       Int            @default(1) @map("attempts_count")
+  timeLimitHours      Int            @map("time_limit_hours")
+  
+  // Consequence Array Anchors
+  unlockedSkills      String         @default("[]") @map("unlocked_skills") // SQLite compatible String
+  consequenceNarrative String?       @map("consequence_narrative")
+  
+  initiatedAt         DateTime?      @map("initiated_at")
+  resolvedAt          DateTime?      @map("resolved_at")
+  createdAt           DateTime       @default(now()) @map("created_at")
+
+  user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phases              BossPhase[]
+  archiveChapter      ArchiveChapter?
+
+  @@map("boss_battles")
+}
+
+model BossPhase {
+  id           String     @id @default(uuid())
+  bossBattleId String     @map("boss_battle_id")
+  title        String     
+  isCompleted  Boolean    @default(false) @map("is_completed")
+  completedAt  DateTime?  @map("completed_at")
+
+  bossBattle   BossBattle @relation(fields: [bossBattleId], references: [id], onDelete: Cascade)
+
+  @@map("boss_phases")
+}
+
+model ArchiveChapter {
+  id             String     @id @default(uuid())
+  bossBattleId   String     @unique @map("boss_battle_id")
+  chapterTitle   String     @map("chapter_title")
+  durationDays   Int        @map("duration_days")
+  lessonsLearned String     @map("lessons_learned")
+  createdAt      DateTime   @default(now()) @map("created_at")
+
+  bossBattle     BossBattle @relation(fields: [bossBattleId], references: [id], onDelete: Cascade)
+
+  @@map("archive_chapters")
+}
+
+model CodexEntry {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  
+  // The Refactored Typology
+  type           String   // "BELIEF", "DECLARATION", "TURNING_POINT", "VALUE", "RELATIONSHIP_AXIS", "ANNUAL_REFLECTION", "SILENCE_GAP"
+  importance     String   // "COMMON", "HIGH", "EPIC", "LEGENDARY"
+  
+  // The Subjective Perspective Shift
+  narrativeState String   @map("narrative_state")
+  rawUserQuote   String   @map("raw_user_quote")
+  
+  // Resolution Tracking (For historical contrast)
+  isChallenged   Boolean  @default(false) @map("is_challenged")
+  resolutionNote String?  @map("resolution_note")
+  
+  // Retcon & Correction Telemetry
+  isRetconned    Boolean  @default(false) @map("is_retconned")
+  retconReason   String?  @map("retcon_reason")
+  userCorrectionCount Int   @default(0) @map("user_correction_count")
+
+  linkedEntities String   @default("[]") @map("linked_entities") // SQLite compatible String
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("codex_entries")
+}
+
+model SystemAssertion {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  claimText      String   @map("claim_text") // e.g., "Programming is your dominant vector."
+  confidenceScore Float   @map("confidence_score")  // 0.00 to 1.00
+  
+  // The Evidence Layer Array Maps (SQLite compatible strings)
+  evidenceLogs   String   @default("[]") @map("evidence_logs")
+  linkedCodexIds String   @default("[]") @map("linked_codex_ids")
+  
+  status         String   @default("PENDING_VALIDATION") // PENDING_VALIDATION, ACCEPTED, REFUTED
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("system_assertions")
 }

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Header } from '@/components/Header'
 import { Navbar } from '@/components/Navbar'
 import { RewardModal } from '@/components/RewardModal'
-import { Sword, Zap, Shield, Sparkles, PlusCircle, CheckCircle2, Award, Calendar, ChevronRight, Trash2 } from 'lucide-react'
+import { Sword, Zap, Shield, Sparkles, PlusCircle, CheckCircle2, Award, Calendar, ChevronRight, Trash2, Brain, Send, Cpu } from 'lucide-react'
 import { useAuth } from '@/lib/useAuth'
 
 interface UserStatus {
@@ -25,6 +25,7 @@ interface UserStatus {
     weight?: string
     height?: string
     fitness_goals?: string
+    state_json?: string | null
     execution_lvl: number
     execution_base: number
     adaptability_lvl: number
@@ -61,6 +62,7 @@ interface UserStatus {
     xp_reward: number
     status: string
     quest_type: string
+    reason?: string | null
   }>
 }
 
@@ -92,6 +94,12 @@ export default function ForgeHub() {
   const [egoBase, setEgoBase] = useState(5)
   const [creatingCharacter, setCreatingCharacter] = useState(false)
   const [charGeneratedResult, setCharGeneratedResult] = useState<any | null>(null)
+
+  // Onboarding Chat state
+  const [onboardingMessages, setOnboardingMessages] = useState<any[]>([])
+  const [onboardingInput, setOnboardingInput] = useState('')
+  const [onboardingLoading, setOnboardingLoading] = useState(false)
+  const [onboardingProgress, setOnboardingProgress] = useState(0)
 
   // Reward Modal state
   const [rewardOpen, setRewardOpen] = useState(false)
@@ -131,6 +139,61 @@ export default function ForgeHub() {
       fetchStatus()
     }
   }, [isReady, userId])
+
+  // Load onboarding chat history when character is missing
+  useEffect(() => {
+    if (isReady && userId && status && !status.character) {
+      const loadOnboardingHistory = async () => {
+        try {
+          const res = await fetch(`/api/system/history?userId=${userId}`)
+          const data = await res.json()
+          if (data.messages) {
+            setOnboardingMessages(data.messages)
+            const userMsgs = data.messages.filter((m: any) => m.sender === 'USER').length
+            setOnboardingProgress(Math.min(100, Math.round((userMsgs / 10) * 100)))
+          }
+        } catch (e) {
+          console.error('Failed loading onboarding history:', e)
+        }
+      }
+      loadOnboardingHistory()
+    }
+  }, [isReady, userId, status])
+
+  // Handle sending a message in the onboarding chat
+  const handleSendOnboarding = async (text: string) => {
+    const cleanText = text.trim()
+    if (!cleanText || !userId || onboardingLoading) return
+
+    setOnboardingInput('')
+    setOnboardingLoading(true)
+
+    // Optimistically add user message to list
+    setOnboardingMessages(prev => [...prev, { sender: 'USER', content: cleanText }])
+
+    try {
+      const res = await fetch('/api/system/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, message: cleanText })
+      })
+      const data = await res.json()
+      if (data.error) {
+        alert(data.error)
+      } else {
+        if (data.finished) {
+          setCharGeneratedResult(data.analysis)
+        } else {
+          setOnboardingMessages(prev => [...prev, { sender: 'SYSTEM', content: data.reply }])
+          setOnboardingProgress(data.progress || 0)
+        }
+      }
+    } catch (e: any) {
+      alert(e.message)
+    } finally {
+      setOnboardingLoading(false)
+    }
+  }
 
   // Create Custom Character Alter Ego
   const handleCreateCharacter = async (e: React.FormEvent) => {
@@ -301,12 +364,12 @@ export default function ForgeHub() {
   // If no Character has been compiled, show Alter Ego initialization screen
   if (!status?.character) {
     return (
-      <div className="flex-1 flex flex-col p-6 text-slate-100 min-h-screen justify-center">
+      <div className="flex-1 flex flex-col p-4 text-slate-100 min-h-screen justify-center max-w-lg mx-auto gap-4">
         {charGeneratedResult ? (
           /* Character Compilation complete screen */
-          <div className="glass-panel border-cyan-500/20 p-6 rounded-xl flex flex-col items-center text-center gap-5 shadow-[0_0_30px_rgba(6,182,212,0.15)] animate-in zoom-in-95 duration-500">
-            <div className="bg-cyan-500/10 p-4 rounded-full border border-cyan-500/30 animate-pulse">
-              <Sparkles className="text-cyan-400 h-10 w-10" />
+          <div className="glass-panel border-cyan-500/20 p-6 rounded-xl flex flex-col items-stretch text-center gap-5 shadow-[0_0_30px_rgba(6,182,212,0.15)] animate-in zoom-in-95 duration-500 bg-[#0a0c16]/90">
+            <div className="bg-cyan-500/10 p-3 self-center rounded-full border border-cyan-500/30 animate-pulse">
+              <Sparkles className="text-cyan-400 h-8 w-8" />
             </div>
             
             <div>
@@ -314,197 +377,142 @@ export default function ForgeHub() {
                 Alter Ego Successfully Forged
               </span>
               <h2 className="text-2xl font-black text-slate-50 mt-1">{charGeneratedResult.class}</h2>
-              <p className="text-[11px] uppercase tracking-wider text-purple-400 rpg-font mt-0.5">
-                Archetype: {charGeneratedResult.archetype}
-              </p>
+              {charGeneratedResult.archetype && (
+                <p className="text-[11px] uppercase tracking-wider text-purple-400 rpg-font mt-0.5">
+                  Archetype: {charGeneratedResult.archetype}
+                </p>
+              )}
             </div>
 
-            <div className="text-sm text-slate-300 leading-relaxed border-y border-purple-950/40 py-4 max-w-sm">
+            <div className="text-xs text-slate-300 leading-relaxed border-y border-purple-950/40 py-3 italic">
               "{charGeneratedResult.biography}"
             </div>
+
+            {charGeneratedResult.values && (
+              <div className="flex flex-col gap-1.5 items-center">
+                <span className="text-[9px] uppercase font-extrabold text-slate-500 tracking-wider">Core Inferred Values</span>
+                <div className="flex flex-wrap justify-center gap-1.5">
+                  {charGeneratedResult.values.map((v: string) => (
+                    <span key={v} className="bg-slate-900 border border-slate-800 text-[10px] text-cyan-400 px-2 py-0.5 rounded font-bold uppercase">
+                      {v}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {charGeneratedResult.attributes && (
+              <div className="flex flex-col gap-2 text-left">
+                <span className="text-[9px] uppercase font-extrabold text-slate-500 tracking-wider text-center">Starting Attribute Baselines</span>
+                <div className="grid grid-cols-3 gap-2">
+                  {Object.entries(charGeneratedResult.attributes).map(([name, attr]: any) => (
+                    <div key={name} className="bg-slate-950/60 border border-purple-950/40 p-2 rounded flex flex-col justify-between items-center text-center">
+                      <span className="text-[9px] text-slate-400 font-bold truncate w-full">{name}</span>
+                      <span className="text-xs font-black text-cyan-400 mt-1">LVL {attr.level}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <button
               onClick={() => {
                 setCharGeneratedResult(null)
                 fetchStatus()
               }}
-              className="w-full bg-gradient-to-r from-purple-700 to-cyan-600 border border-purple-500/30 text-xs uppercase font-extrabold tracking-widest py-3 rounded-lg hover:from-purple-600 hover:to-cyan-500 transition shadow-lg"
+              className="w-full bg-gradient-to-r from-purple-700 to-cyan-600 border border-purple-500/30 text-xs uppercase font-extrabold tracking-widest py-3 rounded-lg hover:from-purple-600 hover:to-cyan-500 transition shadow-lg mt-2"
             >
               Enter The Forge
             </button>
           </div>
         ) : (
-          /* Input Wizard */
-          <div className="flex flex-col gap-6">
+          /* Conversational Onboarding Chat UI */
+          <div className="flex flex-col gap-4 w-full h-[85vh] justify-between">
             <div className="text-center">
-              <h2 className="text-2xl font-black tracking-widest text-purple-400">THE SYSTEM REQUIRES IDENTITY</h2>
-              <p className="text-xs text-slate-400 mt-1">
-                You are entering a realm of progression. Compile your alter ego character sheet.
+              <h2 className="text-xl font-black tracking-widest text-purple-400 flex items-center justify-center gap-1.5">
+                <Brain size={18} className="animate-pulse" />
+                THE SYSTEM ASSESSMENT
+              </h2>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                Respond to the Game Master's queries to forge your character sheet.
               </p>
             </div>
 
-            <form onSubmit={handleCreateCharacter} className="flex flex-col gap-4 bg-slate-950/50 p-5 rounded-lg border border-purple-950/60 glass-panel">
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Character Name</label>
-                <input 
-                  type="text" 
-                  value={charName} 
-                  onChange={e => setCharName(e.target.value)}
-                  placeholder="e.g. Elysian Monarch"
-                  required
-                  className="bg-slate-900 border border-purple-950 p-2.5 rounded text-sm text-slate-100 focus:outline-none focus:border-cyan-500/50"
+            {/* Assessment Progress Bar */}
+            <div className="w-full flex flex-col gap-1.5 px-1 mt-1">
+              <div className="flex justify-between text-[9px] text-slate-500 font-bold uppercase tracking-wider">
+                <span>Assessment Synchronization</span>
+                <span>{onboardingProgress}%</span>
+              </div>
+              <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-900">
+                <div 
+                  className="h-full bg-gradient-to-r from-purple-600 to-cyan-500 transition-all duration-500"
+                  style={{ width: `${onboardingProgress}%` }}
                 />
               </div>
+            </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Aspirations</label>
+            {/* Scrolling Chat log */}
+            <div className="flex-1 bg-slate-950/45 border border-purple-950/60 rounded-xl flex flex-col overflow-hidden relative shadow-[inset_0_0_20px_rgba(0,0,0,0.8)]">
+              <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+                {onboardingMessages.map((msg, idx) => {
+                  const isSystem = msg.sender === 'SYSTEM'
+                  return (
+                    <div 
+                      key={idx}
+                      className={`flex flex-col max-w-[85%] ${
+                        isSystem ? 'self-start items-start' : 'self-end items-end'
+                      }`}
+                    >
+                      <span className={`text-[8px] uppercase tracking-wider font-extrabold mb-1 ${
+                        isSystem ? 'text-purple-400' : 'text-cyan-400'
+                      }`}>
+                        {isSystem ? '▸ THE SYSTEM' : '▸ CANDIDATE'}
+                      </span>
+                      <div className={`p-3 rounded-xl border text-xs leading-relaxed ${
+                        isSystem 
+                          ? 'bg-[#0f1122]/95 border-purple-950/70 text-slate-200 mono-font' 
+                          : 'bg-cyan-950/20 border-cyan-500/20 text-slate-100'
+                      }`}>
+                        {msg.content}
+                      </div>
+                    </div>
+                  )
+                })}
+                {onboardingLoading && (
+                  <div className="self-start flex flex-col items-start max-w-[85%]">
+                    <span className="text-[8px] text-purple-400 uppercase tracking-wider font-extrabold mb-1">▸ THE SYSTEM</span>
+                    <div className="p-3 rounded-xl border bg-[#0f1122]/95 border-purple-950/70 text-slate-400 text-xs mono-font flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-purple-500 animate-bounce" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-purple-500 animate-bounce delay-75" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-purple-500 animate-bounce delay-150" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Chat Input */}
+              <div className="p-3 border-t border-purple-950/60 bg-[#060812] flex gap-2">
                 <input 
-                  type="text" 
-                  value={charAspirations} 
-                  onChange={e => setCharAspirations(e.target.value)}
-                  placeholder="e.g. Mastery in Software assets, athletic conditioning"
-                  className="bg-slate-900 border border-purple-950 p-2.5 rounded text-sm text-slate-100 focus:outline-none"
+                  type="text"
+                  value={onboardingInput}
+                  onChange={e => setOnboardingInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSendOnboarding(onboardingInput)}
+                  placeholder={onboardingLoading ? "Processing response..." : "Relay response..."}
+                  disabled={onboardingLoading}
+                  className="flex-1 bg-slate-900 border border-purple-950/60 p-2.5 rounded-lg text-xs text-slate-100 placeholder-slate-500 focus:outline-none"
                 />
+                <button
+                  onClick={() => handleSendOnboarding(onboardingInput)}
+                  disabled={!onboardingInput.trim() || onboardingLoading}
+                  className="bg-purple-800 hover:bg-purple-700 disabled:bg-slate-800 text-slate-200 hover:text-slate-100 p-2.5 rounded-lg flex items-center justify-center transition active:scale-95"
+                >
+                  <Send size={14} />
+                </button>
               </div>
+            </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Strengths</label>
-                <input 
-                  type="text" 
-                  value={charStrengths} 
-                  onChange={e => setCharStrengths(e.target.value)}
-                  placeholder="e.g. Focused logic, coding skills, boxing"
-                  className="bg-slate-900 border border-purple-950 p-2.5 rounded text-sm text-slate-100 focus:outline-none"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Weaknesses</label>
-                <input 
-                  type="text" 
-                  value={charWeaknesses} 
-                  onChange={e => setCharWeaknesses(e.target.value)}
-                  placeholder="e.g. Public speaking, inconsistent sleeping hours"
-                  className="bg-slate-900 border border-purple-950 p-2.5 rounded text-sm text-slate-100 focus:outline-none"
-                />
-              </div>
-
-              {/* Physical Parameters */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Weight</label>
-                  <input 
-                    type="text" 
-                    value={charWeight} 
-                    onChange={e => setCharWeight(e.target.value)}
-                    placeholder="e.g. 78 kg"
-                    className="bg-slate-900 border border-purple-950 p-2.5 rounded text-sm text-slate-100 focus:outline-none"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Height</label>
-                  <input 
-                    type="text" 
-                    value={charHeight} 
-                    onChange={e => setCharHeight(e.target.value)}
-                    placeholder="e.g. 180 cm"
-                    className="bg-slate-900 border border-purple-950 p-2.5 rounded text-sm text-slate-100 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Fitness Goals</label>
-                <input 
-                  type="text" 
-                  value={charFitnessGoals} 
-                  onChange={e => setCharFitnessGoals(e.target.value)}
-                  placeholder="e.g. Fat loss, stamina improvement"
-                  className="bg-slate-900 border border-purple-950 p-2.5 rounded text-sm text-slate-100 focus:outline-none"
-                />
-              </div>
-
-              {/* Mindset Baseline Stats */}
-              <div className="border-t border-purple-950/60 my-2 pt-4">
-                <h3 className="text-xs uppercase font-bold text-purple-400 tracking-widest mb-3">Initialize Mindset Baselines (1-10)</h3>
-                
-                <div className="flex flex-col gap-3">
-                  <div className="flex flex-col gap-1">
-                    <div className="flex justify-between text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                      <span>Execution</span>
-                      <span className="text-purple-400">{execBase}</span>
-                    </div>
-                    <input 
-                      type="range" min="1" max="10" 
-                      value={execBase} 
-                      onChange={e => setExecBase(parseInt(e.target.value))}
-                      className="accent-purple-500 bg-slate-900 cursor-pointer h-1.5 rounded-lg"
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1">
-                    <div className="flex justify-between text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                      <span>Adaptability</span>
-                      <span className="text-purple-400">{adapBase}</span>
-                    </div>
-                    <input 
-                      type="range" min="1" max="10" 
-                      value={adapBase} 
-                      onChange={e => setAdapBase(parseInt(e.target.value))}
-                      className="accent-purple-500 bg-slate-900 cursor-pointer h-1.5 rounded-lg"
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1">
-                    <div className="flex justify-between text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                      <span>Resilience</span>
-                      <span className="text-purple-400">{resiBase}</span>
-                    </div>
-                    <input 
-                      type="range" min="1" max="10" 
-                      value={resiBase} 
-                      onChange={e => setResiBase(parseInt(e.target.value))}
-                      className="accent-purple-500 bg-slate-900 cursor-pointer h-1.5 rounded-lg"
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1">
-                    <div className="flex justify-between text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                      <span>Self-Awareness</span>
-                      <span className="text-purple-400">{selfBase}</span>
-                    </div>
-                    <input 
-                      type="range" min="1" max="10" 
-                      value={selfBase} 
-                      onChange={e => setSelfBase(parseInt(e.target.value))}
-                      className="accent-purple-500 bg-slate-900 cursor-pointer h-1.5 rounded-lg"
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1">
-                    <div className="flex justify-between text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                      <span>Ego Resistance</span>
-                      <span className="text-purple-400">{egoBase}</span>
-                    </div>
-                    <input 
-                      type="range" min="1" max="10" 
-                      value={egoBase} 
-                      onChange={e => setEgoBase(parseInt(e.target.value))}
-                      className="accent-purple-500 bg-slate-900 cursor-pointer h-1.5 rounded-lg"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={creatingCharacter}
-                className="bg-gradient-to-r from-purple-700 to-purple-900 border border-purple-500/30 text-xs font-black uppercase tracking-widest py-3 rounded text-slate-50 hover:from-purple-600 hover:to-purple-800 transition disabled:opacity-50 mt-2"
-              >
-                {creatingCharacter ? 'FORGING SHEETS...' : 'INITIATE SYNCHRONIZATION'}
-              </button>
-            </form>
-            <div className="text-center mt-4">
+            <div className="text-center">
               <button
                 onClick={logout}
                 className="text-[10px] text-slate-500 hover:text-red-400 uppercase tracking-widest transition-colors font-semibold"
@@ -522,6 +530,127 @@ export default function ForgeHub() {
   const activeQuests = status.quests.filter(q => q.status === 'ACTIVE')
   const completedQuests = status.quests.filter(q => q.status === 'COMPLETED')
   const shownQuests = questTab === 'ACTIVE' ? activeQuests : completedQuests
+
+  // Safe parsing of trainable RPG statistics from state_json
+  let attributes: Record<string, { level: number; xp: number; trend: string; title: string | null }> = {
+    "Strength": { "level": 10, "xp": 0, "trend": "Stable", "title": null },
+    "Endurance": { "level": 10, "xp": 0, "trend": "Stable", "title": null },
+    "Agility": { "level": 10, "xp": 0, "trend": "Stable", "title": null },
+    "Vitality": { "level": 10, "xp": 0, "trend": "Stable", "title": null },
+    "Focus": { "level": 10, "xp": 0, "trend": "Stable", "title": null },
+    "Knowledge": { "level": 10, "xp": 0, "trend": "Stable", "title": null },
+    "Creativity": { "level": 10, "xp": 0, "trend": "Stable", "title": null },
+    "Resilience": { "level": 10, "xp": 0, "trend": "Stable", "title": null },
+    "Charisma": { "level": 10, "xp": 0, "trend": "Stable", "title": null }
+  }
+  
+  let dynamicStates: Record<string, number> = {
+    "energy": 80,
+    "stress": 30,
+    "confidence": 75,
+    "fulfillment": 60,
+    "motivation": 85
+  }
+
+  let coreValues: string[] = ["Growth", "Discipline"]
+
+  if (status.character?.state_json) {
+    try {
+      const parsed = JSON.parse(status.character.state_json)
+      if (parsed.attributes) attributes = parsed.attributes
+      if (parsed.dynamicStates) dynamicStates = parsed.dynamicStates
+      if (parsed.values) coreValues = parsed.values
+    } catch (e) {
+      console.error("Error parsing state_json:", e)
+    }
+  }
+
+  const renderQuestCard = (quest: any) => {
+    let colorClass = 'border-purple-950/40 bg-slate-950/50'
+    let badgeColor = 'bg-slate-900 text-slate-400'
+    let questLabel = 'Side Quest'
+    
+    if (quest.quest_type === 'BOSS') {
+      colorClass = 'border-amber-500/25 bg-amber-500/5 shadow-[0_0_15px_rgba(245,158,11,0.08)]'
+      badgeColor = 'bg-amber-950/40 text-amber-300 border border-amber-500/25'
+      questLabel = 'Boss Battle'
+    } else if (quest.quest_type === 'ELITE' || quest.quest_type === 'PRIORITY') {
+      colorClass = 'border-cyan-500/25 bg-cyan-500/5'
+      badgeColor = 'bg-cyan-950/40 text-cyan-300 border border-cyan-500/25'
+      questLabel = quest.quest_type === 'ELITE' ? 'Elite Quest' : 'Priority Quest'
+    } else if (quest.quest_type === 'MAIN') {
+      colorClass = 'border-purple-500/25 bg-purple-500/5'
+      badgeColor = 'bg-purple-950/40 text-purple-300 border border-purple-500/25'
+      questLabel = 'Main Quest'
+    } else if (quest.quest_type === 'OPPORTUNITY') {
+      colorClass = 'border-emerald-500/25 bg-emerald-500/5'
+      badgeColor = 'bg-emerald-950/40 text-emerald-300 border border-emerald-500/25'
+      questLabel = 'Opportunity'
+    }
+
+    let skillMapping = 'General'
+    const cleanTitle = quest.title.toLowerCase()
+    if (cleanTitle.includes('run') || cleanTitle.includes('workout') || cleanTitle.includes('lift') || cleanTitle.includes('physique')) {
+      skillMapping = 'Physique'
+    } else if (cleanTitle.includes('code') || cleanTitle.includes('program') || cleanTitle.includes('schema') || cleanTitle.includes('api')) {
+      skillMapping = 'Programming'
+    } else if (cleanTitle.includes('client') || cleanTitle.includes('saas') || cleanTitle.includes('sale')) {
+      skillMapping = 'SaaS'
+    }
+
+    return (
+      <div 
+        key={quest.id} 
+        className={`border p-4 rounded-xl flex items-center justify-between gap-3 transition-all relative overflow-hidden ${colorClass}`}
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`text-[8px] font-black tracking-widest px-2 py-0.5 rounded-full uppercase ${badgeColor}`}>
+              {questLabel}
+            </span>
+            <span className="text-[9px] text-slate-500 uppercase font-semibold">Difficulty {quest.difficulty}</span>
+          </div>
+          
+          <h4 className="text-md font-bold text-slate-100 tracking-wide mt-1.5 truncate">
+            {quest.title}
+          </h4>
+          {quest.description && (
+            <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">
+              {quest.description}
+            </p>
+          )}
+          
+          {quest.reason && (
+            <p className="text-[10px] text-purple-400 font-semibold mt-1 leading-normal italic">
+              ✦ Reason: {quest.reason}
+            </p>
+          )}
+          
+          <div className="text-[10px] text-purple-400 font-extrabold mt-1.5 uppercase flex items-center gap-1">
+            <Sparkles size={10} />
+            +{quest.xp_reward} XP to {skillMapping}
+          </div>
+        </div>
+
+        <div className="flex gap-1.5">
+          {quest.status === 'ACTIVE' && (
+            <button
+              onClick={() => handleCompleteQuest(quest.id, skillMapping)}
+              className="bg-slate-900 hover:bg-cyan-950/40 border border-slate-800 hover:border-cyan-500/40 text-slate-200 hover:text-cyan-400 p-2.5 rounded-lg flex items-center justify-center transition active:scale-95 flex-shrink-0"
+            >
+              <CheckCircle2 size={18} />
+            </button>
+          )}
+          <button
+            onClick={() => handleDeleteQuest(quest.id)}
+            className="bg-slate-900 hover:bg-red-950/40 border border-slate-800 hover:border-red-500/40 text-slate-400 hover:text-red-400 p-2.5 rounded-lg flex items-center justify-center transition active:scale-95 flex-shrink-0"
+          >
+            <Trash2 size={18} />
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex-1 flex flex-col pb-20 md:pb-6 relative min-h-screen">
@@ -613,69 +742,180 @@ export default function ForgeHub() {
           </div>
         </div>
 
-        {/* Core Attributes Panel */}
-        <section className="flex flex-col gap-2.5">
+        {/* Core Attributes Panel (V2 Trainable System) */}
+        <section className="flex flex-col gap-3">
           <h3 className="text-xs uppercase font-extrabold text-slate-400 tracking-wider flex items-center gap-1.5">
-            <Award size={14} className="text-cyan-400 animate-pulse" />
-            Core RPG Attributes
+            <Award size={14} className="text-cyan-400" />
+            Trainable Character Attributes
           </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              { name: 'Strength', lvl: status.character.strength_lvl, xp: status.character.strength_xp, icon: <Shield size={12} className="text-red-400 animate-pulse" /> },
-              { name: 'Willpower', lvl: status.character.willpower_lvl, xp: status.character.willpower_xp, icon: <Sparkles size={12} className="text-amber-400 animate-pulse" /> },
-              { name: 'Mobility', lvl: status.character.mobility_lvl, xp: status.character.mobility_xp, icon: <Zap size={12} className="text-green-400 animate-pulse" /> },
-              { name: 'Wisdom', lvl: status.character.wisdom_lvl, xp: status.character.wisdom_xp, icon: <Sword size={12} className="text-blue-400 animate-pulse" /> }
-            ].map(stat => {
-              const reqXp = stat.lvl * 100
-              const pct = Math.min(100, (stat.xp / reqXp) * 100)
-              return (
-                <div key={stat.name} className="bg-[#090b16]/60 border border-purple-950/40 p-3 rounded shadow flex flex-col justify-between relative overflow-hidden">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-[10px] text-slate-300 font-bold flex items-center gap-1.5">
-                      {stat.icon}
-                      {stat.name}
-                    </span>
-                    <span className="bg-slate-900 border border-slate-800 text-[8px] font-black text-cyan-400 px-1.5 py-0.5 rounded tracking-wide">
-                      LVL {stat.lvl}
-                    </span>
-                  </div>
-                  <div className="mt-2">
-                    <div className="flex justify-between text-[8px] text-slate-500 font-semibold mb-1">
-                      <span>XP PROGRESS</span>
-                      <span>{stat.xp} / {reqXp}</span>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* PHYSICAL CATEGORY */}
+            <div className="bg-[#090b16]/40 border border-purple-950/50 p-4 rounded-xl flex flex-col gap-3">
+              <span className="text-[10px] uppercase font-black text-cyan-400 tracking-widest border-b border-purple-950/60 pb-1.5 flex items-center gap-1.5">
+                <Shield size={12} /> Physical Capability
+              </span>
+              <div className="flex flex-col gap-3">
+                {['Strength', 'Endurance', 'Agility', 'Vitality'].map(name => {
+                  const attr = attributes[name] || { level: 10, xp: 0, trend: 'Stable', title: null }
+                  const reqXp = attr.level * 500
+                  const pct = Math.min(100, (attr.xp / reqXp) * 100)
+                  return (
+                    <div key={name} className="flex flex-col gap-1.5">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-bold text-slate-200 flex items-center gap-1">
+                          {name}
+                          {attr.title && (
+                            <span className="bg-cyan-950 text-cyan-300 border border-cyan-800 text-[8px] px-1 py-0.5 rounded font-black uppercase">
+                              {attr.title}
+                            </span>
+                          )}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="mono-font text-[10px] text-cyan-400 font-extrabold">LVL {attr.level}</span>
+                          <span className={`text-[10px] font-black ${
+                            attr.trend === 'Improving' ? 'text-green-400' : attr.trend === 'Declining' ? 'text-red-400' : 'text-slate-500'
+                          }`} title={`Trend: ${attr.trend}`}>
+                            {attr.trend === 'Improving' ? '↑' : attr.trend === 'Declining' ? '↓' : '→'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-slate-900">
+                        <div className="h-full bg-cyan-500 transition-all duration-300" style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="flex justify-between text-[8px] text-slate-500 font-bold uppercase tracking-wider">
+                        <span>Progress</span>
+                        <span>{attr.xp} / {reqXp} XP</span>
+                      </div>
                     </div>
-                    <div className="w-full bg-slate-950 h-1 rounded-full overflow-hidden relative border border-slate-900/60">
-                      <div 
-                        className="h-full bg-cyan-500 transition-all duration-300"
-                        style={{ width: `${pct}%` }}
-                      />
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* COGNITIVE CATEGORY */}
+            <div className="bg-[#090b16]/40 border border-purple-950/50 p-4 rounded-xl flex flex-col gap-3">
+              <span className="text-[10px] uppercase font-black text-purple-400 tracking-widest border-b border-purple-950/60 pb-1.5 flex items-center gap-1.5">
+                <Brain size={12} /> Cognitive Capability
+              </span>
+              <div className="flex flex-col gap-3">
+                {['Focus', 'Knowledge', 'Creativity'].map(name => {
+                  const attr = attributes[name] || { level: 10, xp: 0, trend: 'Stable', title: null }
+                  const reqXp = attr.level * 500
+                  const pct = Math.min(100, (attr.xp / reqXp) * 100)
+                  return (
+                    <div key={name} className="flex flex-col gap-1.5">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-bold text-slate-200 flex items-center gap-1">
+                          {name}
+                          {attr.title && (
+                            <span className="bg-purple-950 text-purple-300 border border-purple-800 text-[8px] px-1 py-0.5 rounded font-black uppercase">
+                              {attr.title}
+                            </span>
+                          )}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="mono-font text-[10px] text-purple-400 font-extrabold">LVL {attr.level}</span>
+                          <span className={`text-[10px] font-black ${
+                            attr.trend === 'Improving' ? 'text-green-400' : attr.trend === 'Declining' ? 'text-red-400' : 'text-slate-500'
+                          }`} title={`Trend: ${attr.trend}`}>
+                            {attr.trend === 'Improving' ? '↑' : attr.trend === 'Declining' ? '↓' : '→'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-slate-900">
+                        <div className="h-full bg-purple-500 transition-all duration-300" style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="flex justify-between text-[8px] text-slate-500 font-bold uppercase tracking-wider">
+                        <span>Progress</span>
+                        <span>{attr.xp} / {reqXp} XP</span>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              )
-            })}
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* CHARACTER CATEGORY */}
+            <div className="bg-[#090b16]/40 border border-purple-950/50 p-4 rounded-xl flex flex-col gap-3">
+              <span className="text-[10px] uppercase font-black text-amber-400 tracking-widest border-b border-purple-950/60 pb-1.5 flex items-center gap-1.5">
+                <Sparkles size={12} /> Character & Influence
+              </span>
+              <div className="flex flex-col gap-3">
+                {['Resilience', 'Charisma'].map(name => {
+                  const attr = attributes[name] || { level: 10, xp: 0, trend: 'Stable', title: null }
+                  const reqXp = attr.level * 500
+                  const pct = Math.min(100, (attr.xp / reqXp) * 100)
+                  return (
+                    <div key={name} className="flex flex-col gap-1.5">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-bold text-slate-200 flex items-center gap-1">
+                          {name}
+                          {attr.title && (
+                            <span className="bg-amber-950 text-amber-300 border border-amber-800 text-[8px] px-1 py-0.5 rounded font-black uppercase">
+                              {attr.title}
+                            </span>
+                          )}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="mono-font text-[10px] text-amber-400 font-extrabold">LVL {attr.level}</span>
+                          <span className={`text-[10px] font-black ${
+                            attr.trend === 'Improving' ? 'text-green-400' : attr.trend === 'Declining' ? 'text-red-400' : 'text-slate-500'
+                          }`} title={`Trend: ${attr.trend}`}>
+                            {attr.trend === 'Improving' ? '↑' : attr.trend === 'Declining' ? '↓' : '→'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-slate-900">
+                        <div className="h-full bg-amber-500 transition-all duration-300" style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="flex justify-between text-[8px] text-slate-500 font-bold uppercase tracking-wider">
+                        <span>Progress</span>
+                        <span>{attr.xp} / {reqXp} XP</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           </div>
         </section>
 
-        {/* Mindset Attributes Panel */}
+        {/* Dynamic States Tracker */}
         <section className="flex flex-col gap-2.5">
           <h3 className="text-xs uppercase font-extrabold text-slate-400 tracking-wider flex items-center gap-1.5">
-            <Sword size={14} className="text-purple-400" />
-            Mindset & Discipline Attributes
+            <Cpu size={14} className="text-cyan-400" />
+            Dynamic System-Estimated States
           </h3>
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {[
-              { name: 'Execution', val: status.character.execution_lvl, base: status.character.execution_base },
-              { name: 'Adaptability', val: status.character.adaptability_lvl, base: status.character.adaptability_base },
-              { name: 'Resilience', val: status.character.resilience_lvl, base: status.character.resilience_base },
-              { name: 'Self-Awareness', val: status.character.self_awareness_lvl, base: status.character.self_awareness_base },
-              { name: 'Ego Resistance', val: status.character.ego_resistance_lvl, base: status.character.ego_resistance_base }
-            ].map(stat => (
-              <div key={stat.name} className="bg-[#090b16]/60 border border-purple-950/40 p-2 rounded text-center shadow">
-                <span className="text-[8px] text-slate-500 uppercase tracking-wider block font-bold truncate" title={stat.name}>{stat.name}</span>
-                <span className="text-xs font-black text-purple-400 block mt-1">{stat.val}</span>
-                <span className="text-[7px] text-slate-600 block">Base: {stat.base}</span>
+              { name: 'Energy', val: dynamicStates.energy, color: 'bg-cyan-500 glow-cyan' },
+              { name: 'Stress', val: dynamicStates.stress, color: 'bg-red-500 glow-red' },
+              { name: 'Confidence', val: dynamicStates.confidence, color: 'bg-amber-500 glow-amber' },
+              { name: 'Fulfillment', val: dynamicStates.fulfillment, color: 'bg-purple-500 glow-purple' },
+              { name: 'Motivation', val: dynamicStates.motivation, color: 'bg-emerald-500 glow-emerald' }
+            ].map(st => (
+              <div key={st.name} className="bg-[#090b16]/60 border border-purple-950/40 p-3 rounded-lg shadow flex flex-col gap-1.5">
+                <div className="flex justify-between text-[10px] uppercase font-bold text-slate-300 tracking-wider">
+                  <span>{st.name}</span>
+                  <span className="mono-font font-black">{st.val}%</span>
+                </div>
+                <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-slate-900">
+                  <div className={`h-full ${st.color} transition-all duration-500`} style={{ width: `${st.val}%` }} />
+                </div>
               </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Aligned Core Values Panel */}
+        <section className="flex flex-col gap-2 bg-[#0a0d1d]/25 border border-purple-950/30 p-3.5 rounded-xl">
+          <span className="text-[9px] uppercase font-black text-slate-500 tracking-wider">Inscribed Core Values Alignment</span>
+          <div className="flex flex-wrap gap-2 mt-1">
+            {coreValues.map((v, i) => (
+              <span key={i} className="bg-slate-900 border border-purple-950/60 px-3 py-1 rounded-lg text-xs font-bold text-cyan-400 uppercase tracking-wide">
+                ✦ {v}
+              </span>
             ))}
           </div>
         </section>
@@ -847,81 +1087,42 @@ export default function ForgeHub() {
               No quests in this catalog.
             </div>
           ) : (
-            <div className="flex flex-col gap-2">
-              {shownQuests.map((quest) => {
-                
-                // Categorize reward styling based on type
-                let colorClass = 'border-purple-950/40 bg-slate-950/50'
-                let badgeColor = 'bg-slate-900 text-slate-400'
-                
-                if (quest.quest_type === 'BOSS') {
-                  colorClass = 'border-amber-500/25 bg-amber-500/5 shadow-[0_0_15px_rgba(245,158,11,0.08)]'
-                  badgeColor = 'bg-amber-950/40 text-amber-300 border border-amber-500/25'
-                } else if (quest.quest_type === 'ELITE') {
-                  colorClass = 'border-cyan-500/25 bg-cyan-500/5'
-                  badgeColor = 'bg-cyan-950/40 text-cyan-300 border border-cyan-500/25'
-                } else if (quest.quest_type === 'MAIN') {
-                  colorClass = 'border-purple-500/25 bg-purple-500/5'
-                  badgeColor = 'bg-purple-950/40 text-purple-300 border border-purple-500/25'
-                }
+            <div className="flex flex-col gap-5">
+              {shownQuests.filter(q => q.quest_type === 'MAIN' || q.quest_type === 'BOSS').length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <span className="text-[10px] uppercase font-black text-purple-400 tracking-widest pl-1 border-l-2 border-purple-500 font-bold">
+                    Main Quests / Boss Battles
+                  </span>
+                  {shownQuests.filter(q => q.quest_type === 'MAIN' || q.quest_type === 'BOSS').map(renderQuestCard)}
+                </div>
+              )}
 
-                // Determine skill mapping (e.g. Physique for Body, Programming for Mind, SaaS/Sales for Wealth)
-                let skillMapping = 'General'
-                if (quest.title.toLowerCase().includes('run') || quest.title.toLowerCase().includes('workout') || quest.title.toLowerCase().includes('lift') || quest.title.toLowerCase().includes('physique')) {
-                  skillMapping = 'Physique'
-                } else if (quest.title.toLowerCase().includes('code') || quest.title.toLowerCase().includes('program') || quest.title.toLowerCase().includes('schema') || quest.title.toLowerCase().includes('api')) {
-                  skillMapping = 'Programming'
-                } else if (quest.title.toLowerCase().includes('client') || quest.title.toLowerCase().includes('saas') || quest.title.toLowerCase().includes('sale')) {
-                  skillMapping = 'SaaS'
-                }
+              {shownQuests.filter(q => q.quest_type === 'PRIORITY' || q.quest_type === 'ELITE').length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <span className="text-[10px] uppercase font-black text-cyan-400 tracking-widest pl-1 border-l-2 border-cyan-500 font-bold">
+                    Priority / Elite Objectives
+                  </span>
+                  {shownQuests.filter(q => q.quest_type === 'PRIORITY' || q.quest_type === 'ELITE').map(renderQuestCard)}
+                </div>
+              )}
 
-                return (
-                  <div 
-                    key={quest.id} 
-                    className={`border p-4 rounded-xl flex items-center justify-between gap-3 transition-all relative overflow-hidden ${colorClass}`}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-[8px] font-black tracking-widest px-2 py-0.5 rounded-full uppercase ${badgeColor}`}>
-                          {quest.quest_type === 'SIDE' ? 'Side Quest' : quest.quest_type === 'MAIN' ? 'Main Quest' : quest.quest_type === 'ELITE' ? 'Elite Quest' : 'Boss Battle'}
-                        </span>
-                        <span className="text-[9px] text-slate-500 uppercase font-semibold">Difficulty {quest.difficulty}</span>
-                      </div>
-                      
-                      <h4 className="text-md font-bold text-slate-100 tracking-wide mt-1.5 truncate">
-                        {quest.title}
-                      </h4>
-                      {quest.description && (
-                        <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">
-                          {quest.description}
-                        </p>
-                      )}
-                      
-                      <div className="text-[10px] text-purple-400 font-extrabold mt-1.5 uppercase flex items-center gap-1">
-                        <Sparkles size={10} />
-                        +{quest.xp_reward} XP to {skillMapping}
-                      </div>
-                    </div>
+              {shownQuests.filter(q => q.quest_type === 'SIDE').length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest pl-1 border-l-2 border-slate-500 font-bold">
+                    Side Quests
+                  </span>
+                  {shownQuests.filter(q => q.quest_type === 'SIDE').map(renderQuestCard)}
+                </div>
+              )}
 
-                    <div className="flex gap-1.5">
-                      {quest.status === 'ACTIVE' && (
-                        <button
-                          onClick={() => handleCompleteQuest(quest.id, skillMapping)}
-                          className="bg-slate-900 hover:bg-cyan-950/40 border border-slate-800 hover:border-cyan-500/40 text-slate-200 hover:text-cyan-400 p-2.5 rounded-lg flex items-center justify-center transition active:scale-95 flex-shrink-0"
-                        >
-                          <CheckCircle2 size={18} />
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleDeleteQuest(quest.id)}
-                        className="bg-slate-900 hover:bg-red-950/40 border border-slate-800 hover:border-red-500/40 text-slate-400 hover:text-red-400 p-2.5 rounded-lg flex items-center justify-center transition active:scale-95 flex-shrink-0"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
+              {shownQuests.filter(q => q.quest_type === 'OPPORTUNITY').length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <span className="text-[10px] uppercase font-black text-emerald-400 tracking-widest pl-1 border-l-2 border-emerald-500 font-bold">
+                    Opportunity Directives
+                  </span>
+                  {shownQuests.filter(q => q.quest_type === 'OPPORTUNITY').map(renderQuestCard)}
+                </div>
+              )}
             </div>
           )}
         </section>

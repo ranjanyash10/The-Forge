@@ -35,6 +35,12 @@ export async function GET(request: Request) {
         },
         chapters: {
           orderBy: { chapter_number: 'desc' }
+        },
+        codexEntries: {
+          orderBy: { createdAt: 'desc' }
+        },
+        systemAssertions: {
+          orderBy: { createdAt: 'desc' }
         }
       }
     })

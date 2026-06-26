@@ -52,6 +52,55 @@ class Skill {
   }
 }
 
+class TrainableAttribute {
+  final String name;
+  final int level;
+  final int xp;
+  final String trend;
+  final String? title;
+
+  TrainableAttribute({
+    required this.name,
+    required this.level,
+    required this.xp,
+    required this.trend,
+    this.title,
+  });
+
+  factory TrainableAttribute.fromJson(String name, Map<String, dynamic> json) {
+    return TrainableAttribute(
+      name: name,
+      level: json['level'] ?? 10,
+      xp: json['xp'] ?? 0,
+      trend: json['trend'] ?? 'Stable',
+      title: json['title'],
+    );
+  }
+}
+
+class SystemMessage {
+  final String id;
+  final String sender; // "SYSTEM" or "USER"
+  final String content;
+  final String createdAt;
+
+  SystemMessage({
+    required this.id,
+    required this.sender,
+    required this.content,
+    required this.createdAt,
+  });
+
+  factory SystemMessage.fromJson(Map<String, dynamic> json) {
+    return SystemMessage(
+      id: json['id'] ?? '',
+      sender: json['sender'] ?? 'SYSTEM',
+      content: json['content'] ?? '',
+      createdAt: json['created_at'] ?? '',
+    );
+  }
+}
+
 class Quest {
   final String id;
   final String title;
@@ -60,6 +109,7 @@ class Quest {
   final int xpReward;
   final String status;
   final String questType;
+  final String? reason;
 
   Quest({
     required this.id,
@@ -69,6 +119,7 @@ class Quest {
     required this.xpReward,
     required this.status,
     required this.questType,
+    this.reason,
   });
 
   factory Quest.fromJson(Map<String, dynamic> json) {
@@ -80,6 +131,7 @@ class Quest {
       xpReward: json['xp_reward'] ?? 0,
       status: json['status'] ?? 'ACTIVE',
       questType: json['quest_type'] ?? 'SIDE',
+      reason: json['reason'],
     );
   }
 }
@@ -95,6 +147,11 @@ class Character {
   final String height;
   final String fitnessGoals;
   final int momentum;
+  final String? stateJson;
+
+  final Map<String, TrainableAttribute> attributes;
+  final Map<String, int> dynamicStates;
+  final List<String> coreValues;
 
   final int executionBase;
   final int executionLvl;
@@ -132,6 +189,10 @@ class Character {
     required this.height,
     required this.fitnessGoals,
     required this.momentum,
+    this.stateJson,
+    required this.attributes,
+    required this.dynamicStates,
+    required this.coreValues,
     required this.executionBase,
     required this.executionLvl,
     required this.executionXp,
@@ -159,6 +220,53 @@ class Character {
 
   factory Character.fromJson(Map<String, dynamic> json) {
     final rawUrl = json['avatar_url'] ?? '';
+    final stateJsonStr = json['state_json'];
+    
+    Map<String, TrainableAttribute> parsedAttrs = {
+      "Strength": TrainableAttribute(name: "Strength", level: 10, xp: 0, trend: "Stable"),
+      "Endurance": TrainableAttribute(name: "Endurance", level: 10, xp: 0, trend: "Stable"),
+      "Agility": TrainableAttribute(name: "Agility", level: 10, xp: 0, trend: "Stable"),
+      "Vitality": TrainableAttribute(name: "Vitality", level: 10, xp: 0, trend: "Stable"),
+      "Focus": TrainableAttribute(name: "Focus", level: 10, xp: 0, trend: "Stable"),
+      "Knowledge": TrainableAttribute(name: "Knowledge", level: 10, xp: 0, trend: "Stable"),
+      "Creativity": TrainableAttribute(name: "Creativity", level: 10, xp: 0, trend: "Stable"),
+      "Resilience": TrainableAttribute(name: "Resilience", level: 10, xp: 0, trend: "Stable"),
+      "Charisma": TrainableAttribute(name: "Charisma", level: 10, xp: 0, trend: "Stable"),
+    };
+    
+    Map<String, int> parsedStates = {
+      "energy": 80,
+      "stress": 30,
+      "confidence": 75,
+      "fulfillment": 60,
+      "motivation": 85,
+    };
+    
+    List<String> parsedValues = ["Growth", "Discipline"];
+    
+    if (stateJsonStr != null && stateJsonStr.toString().isNotEmpty) {
+      try {
+        final parsed = jsonDecode(stateJsonStr);
+        if (parsed['attributes'] != null) {
+          final attrsObj = parsed['attributes'] as Map<String, dynamic>;
+          attrsObj.forEach((key, val) {
+            parsedAttrs[key] = TrainableAttribute.fromJson(key, val);
+          });
+        }
+        if (parsed['dynamicStates'] != null) {
+          final statesObj = parsed['dynamicStates'] as Map<String, dynamic>;
+          statesObj.forEach((key, val) {
+            parsedStates[key] = (val as num).toInt();
+          });
+        }
+        if (parsed['values'] != null) {
+          parsedValues = List<String>.from(parsed['values']);
+        }
+      } catch (e) {
+        print('Error parsing Character state_json: $e');
+      }
+    }
+
     return Character(
       id: json['id'] ?? '',
       name: json['name'] ?? '',
@@ -170,6 +278,10 @@ class Character {
       height: json['height'] ?? '',
       fitnessGoals: json['fitness_goals'] ?? '',
       momentum: json['momentum'] ?? 50,
+      stateJson: stateJsonStr,
+      attributes: parsedAttrs,
+      dynamicStates: parsedStates,
+      coreValues: parsedValues,
       executionBase: json['execution_base'] ?? 5,
       executionLvl: json['execution_lvl'] ?? 5,
       executionXp: json['execution_xp'] ?? 0,
@@ -247,6 +359,91 @@ class Achievement {
   Achievement({required this.id, required this.name, required this.description, required this.badge});
 }
 
+class CodexEntry {
+  final String id;
+  final String userId;
+  final String type;
+  final String importance;
+  final String narrativeState;
+  final String rawUserQuote;
+  final bool isChallenged;
+  final String? resolutionNote;
+  final bool isRetconned;
+  final String? retconReason;
+  final int userCorrectionCount;
+  final String linkedEntities;
+  final String createdAt;
+
+  CodexEntry({
+    required this.id,
+    required this.userId,
+    required this.type,
+    required this.importance,
+    required this.narrativeState,
+    required this.rawUserQuote,
+    required this.isChallenged,
+    this.resolutionNote,
+    required this.isRetconned,
+    this.retconReason,
+    required this.userCorrectionCount,
+    required this.linkedEntities,
+    required this.createdAt,
+  });
+
+  factory CodexEntry.fromJson(Map<String, dynamic> json) {
+    return CodexEntry(
+      id: json['id'] ?? '',
+      userId: json['userId'] ?? json['user_id'] ?? '',
+      type: json['type'] ?? 'BELIEF',
+      importance: json['importance'] ?? 'COMMON',
+      narrativeState: json['narrativeState'] ?? json['narrative_state'] ?? '',
+      rawUserQuote: json['rawUserQuote'] ?? json['raw_user_quote'] ?? '',
+      isChallenged: json['isChallenged'] ?? json['is_challenged'] ?? false,
+      resolutionNote: json['resolutionNote'] ?? json['resolution_note'],
+      isRetconned: json['isRetconned'] ?? json['is_retconned'] ?? false,
+      retconReason: json['retconReason'] ?? json['retcon_reason'],
+      userCorrectionCount: json['userCorrectionCount'] ?? json['user_correction_count'] ?? 0,
+      linkedEntities: json['linkedEntities'] ?? json['linked_entities'] ?? '[]',
+      createdAt: json['createdAt'] ?? json['created_at'] ?? '',
+    );
+  }
+}
+
+class SystemAssertion {
+  final String id;
+  final String userId;
+  final String claimText;
+  final double confidenceScore;
+  final String evidenceLogs;
+  final String linkedCodexIds;
+  final String status;
+  final String createdAt;
+
+  SystemAssertion({
+    required this.id,
+    required this.userId,
+    required this.claimText,
+    required this.confidenceScore,
+    required this.evidenceLogs,
+    required this.linkedCodexIds,
+    required this.status,
+    required this.createdAt,
+  });
+
+  factory SystemAssertion.fromJson(Map<String, dynamic> json) {
+    return SystemAssertion(
+      id: json['id'] ?? '',
+      userId: json['userId'] ?? json['user_id'] ?? '',
+      claimText: json['claimText'] ?? json['claim_text'] ?? '',
+      confidenceScore: (json['confidenceScore'] ?? json['confidence_score'] as num?)?.toDouble() ?? 0.0,
+      evidenceLogs: json['evidenceLogs'] ?? json['evidence_logs'] ?? '[]',
+      linkedCodexIds: json['linkedCodexIds'] ?? json['linked_codex_ids'] ?? '[]',
+      status: json['status'] ?? 'PENDING_VALIDATION',
+      createdAt: json['createdAt'] ?? json['created_at'] ?? '',
+    );
+  }
+}
+
 class GameState extends ChangeNotifier {
   String userId = '';
   bool loading = false;
@@ -265,6 +462,11 @@ class GameState extends ChangeNotifier {
   List<dynamic> dailyLogs = [];
   Set<String> unlockedTitleIds = {};
   Set<String> unlockedAchievementIds = {};
+  List<SystemMessage> systemMessages = [];
+  bool onboardingFinished = false;
+  int onboardingProgress = 0;
+  List<CodexEntry> codexEntries = [];
+  List<SystemAssertion> systemAssertions = [];
 
   bool _initialized = false;
   bool get initialized => _initialized;
@@ -386,6 +588,11 @@ class GameState extends ChangeNotifier {
     dailyLogs = [];
     unlockedTitleIds = {};
     unlockedAchievementIds = {};
+    systemMessages = [];
+    onboardingFinished = false;
+    onboardingProgress = 0;
+    codexEntries = [];
+    systemAssertions = [];
     
     loading = false;
     notifyListeners();
@@ -453,6 +660,22 @@ class GameState extends ChangeNotifier {
         unlockedAchievementIds = (user['achievements'] as List)
             .map<String>((a) => a['achievement_id']?.toString() ?? '')
             .toSet();
+            
+        if (user['codexEntries'] != null) {
+          codexEntries = (user['codexEntries'] as List)
+              .map((c) => CodexEntry.fromJson(c))
+              .toList();
+        } else {
+          codexEntries = [];
+        }
+        
+        if (user['systemAssertions'] != null) {
+          systemAssertions = (user['systemAssertions'] as List)
+              .map((a) => SystemAssertion.fromJson(a))
+              .toList();
+        } else {
+          systemAssertions = [];
+        }
       } else {
         error = 'Failed to load system status: ${response.statusCode}';
       }
@@ -462,6 +685,69 @@ class GameState extends ChangeNotifier {
       loading = false;
       notifyListeners();
     }
+  }
+
+  // Fetch System History
+  Future<void> fetchSystemHistory() async {
+    if (userId.isEmpty) return;
+    try {
+      final response = await http.get(Uri.parse('$apiBaseUrl/system/history?userId=$userId'));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['messages'] != null) {
+          systemMessages = (data['messages'] as List)
+              .map((m) => SystemMessage.fromJson(m))
+              .toList();
+          onboardingFinished = data['finished'] ?? false;
+          onboardingProgress = data['progress'] ?? 0;
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      print('Fetch System History Error: $e');
+    }
+  }
+
+  // Send System Message (onboarding or continuous chat)
+  Future<Map<String, dynamic>?> sendSystemMessage(String content) async {
+    if (userId.isEmpty || content.trim().isEmpty) return null;
+    
+    // Optimistically add user message to history
+    final tempUserMsg = SystemMessage(
+      id: 'temp-user-id',
+      sender: 'USER',
+      content: content,
+      createdAt: DateTime.now().toIso8601String(),
+    );
+    systemMessages.add(tempUserMsg);
+    notifyListeners();
+
+    try {
+      final response = await http.post(
+        Uri.parse('$apiBaseUrl/system/chat'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'userId': userId,
+          'message': content,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        
+        // Remove temp message and fetch full history
+        await fetchSystemHistory();
+        
+        // If character creation finished, trigger fetchStatus to load character details
+        if (data['finished'] == true) {
+          await fetchStatus();
+        }
+        return data;
+      }
+    } catch (e) {
+      print('Send System Message Error: $e');
+    }
+    return null;
   }
 
   // Compile Alter Ego character sheet

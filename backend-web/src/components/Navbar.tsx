@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, BookOpen, GitBranch, PenTool, History } from 'lucide-react'
+import { LayoutDashboard, BookOpen, GitBranch, PenTool, History, Terminal } from 'lucide-react'
 
 export function Navbar() {
   const pathname = usePathname()
@@ -13,6 +13,7 @@ export function Navbar() {
     { name: 'Skills', path: '/skills', icon: GitBranch },
     { name: 'Chronicle', path: '/chronicle', icon: PenTool },
     { name: 'Archives', path: '/archives', icon: History },
+    { name: 'System', path: '/system', icon: Terminal },
   ]
 
   return (

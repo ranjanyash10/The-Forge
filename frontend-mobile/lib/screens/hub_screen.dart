@@ -290,8 +290,10 @@ class _HubScreenState extends State<HubScreen> with SingleTickerProviderStateMix
                       items: const [
                         DropdownMenuItem(value: 'SIDE', child: Text('Side Quest (20 XP)')),
                         DropdownMenuItem(value: 'MAIN', child: Text('Main Quest (50 XP)')),
+                        DropdownMenuItem(value: 'PRIORITY', child: Text('Priority Quest (50 XP)')),
                         DropdownMenuItem(value: 'ELITE', child: Text('Elite Quest (100 XP)')),
                         DropdownMenuItem(value: 'BOSS', child: Text('Boss Battle (300 XP)')),
+                        DropdownMenuItem(value: 'OPPORTUNITY', child: Text('Opportunity Quest (50 XP)')),
                       ],
                       onChanged: (v) => setDialogState(() => type = v!),
                     ),
@@ -624,9 +626,13 @@ class _HubScreenState extends State<HubScreen> with SingleTickerProviderStateMix
     }
 
     if (state.character == null) {
-      return Scaffold(
-        backgroundColor: const Color(0xFF02040A),
-        body: _buildAlterEgoWizard(state),
+      // Character creation is handled conversationally via SystemScreen.
+      // This screen should not be reachable without a character.
+      return const Scaffold(
+        backgroundColor: Color(0xFF02040A),
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFFA855F7)),
+        ),
       );
     }
 
@@ -865,68 +871,160 @@ class _HubScreenState extends State<HubScreen> with SingleTickerProviderStateMix
                       ],
                     ),
                     const SizedBox(height: 12),
-                    // Core RPG Stats Row
+                    // Trainable Attributes Categories
+                    const SizedBox(height: 12),
+                    Row(
+                      children: const [
+                        Icon(Icons.military_tech, color: Color(0xFF06B6D4), size: 16),
+                        SizedBox(width: 6),
+                        Text('TRAINABLE ATTRIBUTES', style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    // PHYSICAL CATEGORY CARD
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: const Color(0xFF0A0D1D).withOpacity(0.4),
-                        border: Border.all(color: const Color(0xFF3B0764).withOpacity(0.2)),
-                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.15)),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Row(
                             children: [
-                              Icon(Icons.emoji_events, color: Color(0xFF06B6D4), size: 10),
+                              Icon(Icons.shield, color: Color(0xFF06B6D4), size: 12),
                               SizedBox(width: 4),
-                              Text('CORE RPG ATTRIBUTES', style: TextStyle(color: Colors.grey, fontSize: 8, fontWeight: FontWeight.bold)),
+                              Text('PHYSICAL CAPABILITY', style: TextStyle(color: Color(0xFF06B6D4), fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1)),
                             ],
                           ),
                           const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(child: _buildCoreStatCard('Strength', state.character!.strengthLvl, state.character!.strengthXp, Icons.shield, Colors.redAccent)),
-                              const SizedBox(width: 8),
-                              Expanded(child: _buildCoreStatCard('Willpower', state.character!.willpowerLvl, state.character!.willpowerXp, Icons.bolt, Colors.amberAccent)),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(child: _buildCoreStatCard('Mobility', state.character!.mobilityLvl, state.character!.mobilityXp, Icons.directions_run, Colors.greenAccent)),
-                              const SizedBox(width: 8),
-                              Expanded(child: _buildCoreStatCard('Wisdom', state.character!.wisdomLvl, state.character!.wisdomXp, Icons.menu_book, Colors.blueAccent)),
-                            ],
-                          ),
+                          ...['Strength', 'Endurance', 'Agility', 'Vitality'].map((name) {
+                            final attr = state.character!.attributes[name] ?? TrainableAttribute(name: name, level: 10, xp: 0, trend: 'Stable');
+                            return _buildV2AttributeRow(name, attr, const Color(0xFF06B6D4));
+                          }),
                         ],
                       ),
                     ),
                     const SizedBox(height: 12),
-                    // Mindset Stats Row
+                    // COGNITIVE CATEGORY CARD
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: const Color(0xFF0A0D1D).withOpacity(0.4),
-                        border: Border.all(color: const Color(0xFF3B0764).withOpacity(0.2)),
-                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFA855F7).withOpacity(0.15)),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('MINDSET ATTRIBUTES', style: TextStyle(color: Colors.grey, fontSize: 8, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          const Row(
                             children: [
-                              _buildStatItem('Execution', state.character!.executionLvl),
-                              _buildStatItem('Adaptability', state.character!.adaptabilityLvl),
-                              _buildStatItem('Resilience', state.character!.resilienceLvl),
-                              _buildStatItem('Awareness', state.character!.selfAwarenessLvl),
-                              _buildStatItem('Ego Resist', state.character!.egoResistanceLvl),
+                              Icon(Icons.psychology, color: Color(0xFFA855F7), size: 12),
+                              SizedBox(width: 4),
+                              Text('COGNITIVE CAPABILITY', style: TextStyle(color: Color(0xFFA855F7), fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1)),
                             ],
                           ),
+                          const SizedBox(height: 8),
+                          ...['Focus', 'Knowledge', 'Creativity'].map((name) {
+                            final attr = state.character!.attributes[name] ?? TrainableAttribute(name: name, level: 10, xp: 0, trend: 'Stable');
+                            return _buildV2AttributeRow(name, attr, const Color(0xFFA855F7));
+                          }),
                         ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // CHARACTER CATEGORY CARD
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0A0D1D).withOpacity(0.4),
+                        border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.15)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.star, color: Color(0xFFF59E0B), size: 12),
+                              SizedBox(width: 4),
+                              Text('CHARACTER & INFLUENCE', style: TextStyle(color: Color(0xFFF59E0B), fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          ...['Resilience', 'Charisma'].map((name) {
+                            final attr = state.character!.attributes[name] ?? TrainableAttribute(name: name, level: 10, xp: 0, trend: 'Stable');
+                            return _buildV2AttributeRow(name, attr, const Color(0xFFF59E0B));
+                          }),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Dynamic States Meter Panel
+                    Row(
+                      children: const [
+                        Icon(Icons.insights, color: Color(0xFF06B6D4), size: 16),
+                        SizedBox(width: 6),
+                        Text('DYNAMIC SYSTEM STATES', style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0A0D1D).withOpacity(0.3),
+                        border: Border.all(color: const Color(0xFF1E1E2C)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          _buildDynamicStateRow('Energy', state.character!.dynamicStates['energy'] ?? 80, const Color(0xFF06B6D4)),
+                          _buildDynamicStateRow('Stress', state.character!.dynamicStates['stress'] ?? 30, Colors.redAccent),
+                          _buildDynamicStateRow('Confidence', state.character!.dynamicStates['confidence'] ?? 75, const Color(0xFFF59E0B)),
+                          _buildDynamicStateRow('Fulfillment', state.character!.dynamicStates['fulfillment'] ?? 60, const Color(0xFFA855F7)),
+                          _buildDynamicStateRow('Motivation', state.character!.dynamicStates['motivation'] ?? 85, const Color(0xFF10B981)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Core Values Alignment
+                    Row(
+                      children: const [
+                        Icon(Icons.gavel, color: Color(0xFF06B6D4), size: 16),
+                        SizedBox(width: 6),
+                        Text('INSCRIBED CORE VALUES', style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0A0D1D).withOpacity(0.2),
+                        border: Border.all(color: const Color(0xFF1E1E2C).withOpacity(0.5)),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: state.character!.coreValues.map((val) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.black,
+                              border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.3)),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '✦ ${val.toUpperCase()}',
+                              style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 9, fontWeight: FontWeight.bold),
+                            ),
+                          );
+                        }).toList(),
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -1052,16 +1150,10 @@ class _HubScreenState extends State<HubScreen> with SingleTickerProviderStateMix
                     const SizedBox(height: 8),
                     
                     // Tab View content
-                    SizedBox(
-                      height: 300,
-                      child: TabBarView(
-                        controller: _tabController,
-                        children: [
-                          _buildQuestList(active, state, true),
-                          _buildQuestList(completed, state, false),
-                        ],
-                      ),
-                    ),
+                    const SizedBox(height: 12),
+                    _tabController.index == 0
+                        ? _buildQuestList(active, state, true)
+                        : _buildQuestList(completed, state, false),
                   ],
                 ),
               )
@@ -1075,194 +1167,308 @@ class _HubScreenState extends State<HubScreen> with SingleTickerProviderStateMix
   Widget _buildQuestList(List<Quest> list, GameState state, bool isAvailable) {
     if (list.isEmpty) {
       return Container(
-        margin: const EdgeInsets.only(top: 20),
-        alignment: Alignment.topCenter,
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        alignment: Alignment.center,
         child: const Text('No quests in this catalog.', style: TextStyle(color: Colors.grey, fontSize: 11)),
       );
     }
 
-    return ListView.builder(
-      itemCount: list.length,
-      itemBuilder: (context, index) {
-        final q = list[index];
+    final mainQuests = list.where((q) => q.questType == 'MAIN' || q.questType == 'BOSS').toList();
+    final priorityQuests = list.where((q) => q.questType == 'PRIORITY' || q.questType == 'ELITE').toList();
+    final sideQuests = list.where((q) => q.questType == 'SIDE').toList();
+    final opportunityQuests = list.where((q) => q.questType == 'OPPORTUNITY').toList();
 
-        Color borderColor = const Color(0xFF3B0764).withOpacity(0.2);
-        Color bgColor = const Color(0xFF05070E).withOpacity(0.6);
-        Color accentColor = const Color(0xFFA855F7);
-        
-        if (q.questType == 'BOSS') {
-          borderColor = Colors.amber.withOpacity(0.3);
-          bgColor = Colors.amber.withOpacity(0.02);
-          accentColor = Colors.amber;
-        } else if (q.questType == 'ELITE') {
-          borderColor = const Color(0xFF06B6D4).withOpacity(0.3);
-          bgColor = const Color(0xFF06B6D4).withOpacity(0.02);
-          accentColor = const Color(0xFF06B6D4);
-        }
-
-        // Skill map suggestions
-        String skillMapping = 'General';
-        final lowerTitle = q.title.toLowerCase();
-        if (lowerTitle.contains('run') || lowerTitle.contains('workout') || lowerTitle.contains('lift') || lowerTitle.contains('physique')) {
-          skillMapping = 'Physique';
-        } else if (lowerTitle.contains('code') || lowerTitle.contains('program') || lowerTitle.contains('schema') || lowerTitle.contains('api')) {
-          skillMapping = 'Programming';
-        } else if (lowerTitle.contains('client') || lowerTitle.contains('saas') || lowerTitle.contains('sale')) {
-          skillMapping = 'SaaS';
-        }
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 6),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: bgColor,
-            border: Border.all(color: borderColor),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: accentColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            q.questType,
-                            style: TextStyle(color: accentColor, fontSize: 8, fontWeight: FontWeight.w900),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text('DIFFICULTY ${q.difficulty}', style: const TextStyle(color: Colors.grey, fontSize: 8)),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(q.title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
-                    if (q.description.isNotEmpty)
-                      Text(q.description, style: const TextStyle(color: Colors.grey, fontSize: 10)),
-                    const SizedBox(height: 6),
-                    Text(
-                      '+${q.xpReward} XP TO $skillMapping',
-                      style: TextStyle(color: accentColor.withOpacity(0.8), fontSize: 9, fontWeight: FontWeight.w900),
-                    ),
-                  ],
-                ),
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (isAvailable) ...[
-                    IconButton(
-                      icon: const Icon(Icons.check_circle_outline, color: Color(0xFF06B6D4)),
-                      onPressed: () async {
-                        final data = await state.completeQuest(q.id, skillMapping);
-                        if (data != null && context.mounted) {
-                          _showRewardDialog(context, data);
-                        }
-                      },
-                    ),
-                  ],
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                    onPressed: () async {
-                      final confirm = await showDialog<bool>(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          backgroundColor: const Color(0xFF0F111E),
-                          title: const Text('Delete Quest', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
-                          content: const Text('Are you sure you want to delete this quest?', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, false),
-                              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, true),
-                              child: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
-                            ),
-                          ],
-                        ),
-                      );
-                      if (confirm == true) {
-                        await state.deleteQuest(q.id);
-                      }
-                    },
-                  ),
-                ],
-              )
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildStatItem(String label, int val) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 7, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 2),
-        Text('$val', style: const TextStyle(color: Color(0xFFA855F7), fontSize: 11, fontWeight: FontWeight.bold)),
+        if (mainQuests.isNotEmpty) ...[
+          _buildQuestGroupHeader('Main Quests & Boss Battles', const Color(0xFFA855F7)),
+          const SizedBox(height: 6),
+          ...mainQuests.map((q) => _buildQuestCard(q, state, isAvailable)),
+          const SizedBox(height: 16),
+        ],
+        if (priorityQuests.isNotEmpty) ...[
+          _buildQuestGroupHeader('Priority & Elite Objectives', const Color(0xFF06B6D4)),
+          const SizedBox(height: 6),
+          ...priorityQuests.map((q) => _buildQuestCard(q, state, isAvailable)),
+          const SizedBox(height: 16),
+        ],
+        if (sideQuests.isNotEmpty) ...[
+          _buildQuestGroupHeader('Side Quests', Colors.grey),
+          const SizedBox(height: 6),
+          ...sideQuests.map((q) => _buildQuestCard(q, state, isAvailable)),
+          const SizedBox(height: 16),
+        ],
+        if (opportunityQuests.isNotEmpty) ...[
+          _buildQuestGroupHeader('Opportunity Directives', const Color(0xFF10B981)),
+          const SizedBox(height: 6),
+          ...opportunityQuests.map((q) => _buildQuestCard(q, state, isAvailable)),
+          const SizedBox(height: 16),
+        ],
       ],
     );
   }
 
-  Widget _buildCoreStatCard(String label, int lvl, int xp, IconData icon, Color color) {
-    final reqXp = lvl * 100;
-    final pct = (xp / reqXp).clamp(0.0, 1.0);
+  Widget _buildQuestGroupHeader(String title, Color color) {
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.only(left: 6, top: 4, bottom: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFF090B16).withOpacity(0.6),
-        border: Border.all(color: const Color(0xFF3B0764).withOpacity(0.15)),
-        borderRadius: BorderRadius.circular(6),
+        border: Border(left: BorderSide(color: color, width: 3)),
       ),
+      child: Text(
+        title.toUpperCase(),
+        style: TextStyle(
+          color: color,
+          fontSize: 9,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuestCard(Quest q, GameState state, bool isAvailable) {
+    Color borderColor = const Color(0xFF1E1E2C);
+    Color bgColor = const Color(0xFF05070E).withOpacity(0.6);
+    Color accentColor = const Color(0xFFA855F7);
+    
+    if (q.questType == 'BOSS') {
+      borderColor = Colors.amber.withOpacity(0.3);
+      bgColor = Colors.amber.withOpacity(0.02);
+      accentColor = Colors.amber;
+    } else if (q.questType == 'ELITE') {
+      borderColor = const Color(0xFF06B6D4).withOpacity(0.3);
+      bgColor = const Color(0xFF06B6D4).withOpacity(0.02);
+      accentColor = const Color(0xFF06B6D4);
+    } else if (q.questType == 'PRIORITY') {
+      borderColor = const Color(0xFF06B6D4).withOpacity(0.25);
+      bgColor = const Color(0xFF06B6D4).withOpacity(0.01);
+      accentColor = const Color(0xFF06B6D4);
+    } else if (q.questType == 'MAIN') {
+      borderColor = const Color(0xFFA855F7).withOpacity(0.25);
+      bgColor = const Color(0xFFA855F7).withOpacity(0.01);
+      accentColor = const Color(0xFFA855F7);
+    } else if (q.questType == 'OPPORTUNITY') {
+      borderColor = const Color(0xFF10B981).withOpacity(0.25);
+      bgColor = const Color(0xFF10B981).withOpacity(0.01);
+      accentColor = const Color(0xFF10B981);
+    }
+
+    String skillMapping = 'General';
+    final lowerTitle = q.title.toLowerCase();
+    if (lowerTitle.contains('run') || lowerTitle.contains('workout') || lowerTitle.contains('lift') || lowerTitle.contains('physique')) {
+      skillMapping = 'Physique';
+    } else if (lowerTitle.contains('code') || lowerTitle.contains('program') || lowerTitle.contains('schema') || lowerTitle.contains('api')) {
+      skillMapping = 'Programming';
+    } else if (lowerTitle.contains('client') || lowerTitle.contains('saas') || lowerTitle.contains('sale')) {
+      skillMapping = 'SaaS';
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: bgColor,
+        border: Border.all(color: borderColor),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: accentColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        q.questType,
+                        style: TextStyle(color: accentColor, fontSize: 8, fontWeight: FontWeight.w900),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text('DIFFICULTY ${q.difficulty}', style: const TextStyle(color: Colors.grey, fontSize: 8)),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(q.title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                if (q.description.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(q.description, style: const TextStyle(color: Colors.grey, fontSize: 10)),
+                ],
+                if (q.reason != null && q.reason!.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    '✦ Reason: ${q.reason}',
+                    style: const TextStyle(color: Color(0xFFA855F7), fontSize: 9, fontStyle: FontStyle.italic),
+                  ),
+                ],
+                const SizedBox(height: 6),
+                Text(
+                  '+${q.xpReward} XP TO $skillMapping',
+                  style: TextStyle(color: accentColor.withOpacity(0.8), fontSize: 9, fontWeight: FontWeight.w900),
+                ),
+              ],
+            ),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isAvailable) ...[
+                IconButton(
+                  icon: const Icon(Icons.check_circle_outline, color: Color(0xFF06B6D4)),
+                  onPressed: () async {
+                    final data = await state.completeQuest(q.id, skillMapping);
+                    if (data != null && context.mounted) {
+                      Navigator.pushNamed(
+                        context,
+                        '/reward_moment',
+                        arguments: {
+                          'questTitle': q.title,
+                          'alert': 'Quest Complete',
+                          'xpReward': q.xpReward,
+                          'difficulty': q.questType,
+                          'rewardData': data,
+                        },
+                      );
+                    }
+                  },
+                ),
+              ],
+              IconButton(
+                icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                onPressed: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      backgroundColor: const Color(0xFF0F111E),
+                      title: const Text('Delete Quest', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                      content: const Text('Are you sure you want to delete this quest?', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirm == true) {
+                    await state.deleteQuest(q.id);
+                  }
+                },
+              ),
+            ],
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildV2AttributeRow(String name, TrainableAttribute attr, Color progressColor) {
+    final reqXp = attr.level * 500;
+    final pct = (attr.xp / reqXp).clamp(0.0, 1.0);
+    final trendSymbol = attr.trend == 'Improving' ? '↑' : attr.trend == 'Declining' ? '↓' : '→';
+    final trendColor = attr.trend == 'Improving' ? Colors.greenAccent : attr.trend == 'Declining' ? Colors.redAccent : Colors.grey;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
-                  Icon(icon, size: 10, color: color),
-                  const SizedBox(width: 4),
-                  Text(label, style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                  Text(name, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                  if (attr.title != null) ...[
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: progressColor.withOpacity(0.1),
+                        border: Border.all(color: progressColor.withOpacity(0.3)),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      child: Text(
+                        attr.title!.toUpperCase(),
+                        style: TextStyle(color: progressColor, fontSize: 6, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0F172A),
-                  border: Border.all(color: const Color(0xFF1E293B)),
-                  borderRadius: BorderRadius.circular(3),
-                ),
-                child: Text('LVL $lvl', style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 7, fontWeight: FontWeight.w900)),
+              Row(
+                children: [
+                  Text('LVL ${attr.level}', style: TextStyle(color: progressColor, fontSize: 10, fontWeight: FontWeight.w900)),
+                  const SizedBox(width: 6),
+                  Text(trendSymbol, style: TextStyle(color: trendColor, fontSize: 10, fontWeight: FontWeight.bold)),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('XP PROGRESS', style: TextStyle(color: Colors.grey, fontSize: 6, fontWeight: FontWeight.bold)),
-              Text('$xp/$reqXp', style: const TextStyle(color: Colors.grey, fontSize: 6, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          const SizedBox(height: 3),
+          const SizedBox(height: 4),
           ClipRRect(
             borderRadius: BorderRadius.circular(2),
             child: LinearProgressIndicator(
               value: pct,
-              minHeight: 3,
+              minHeight: 4,
               backgroundColor: const Color(0xFF020617),
-              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF06B6D4)),
+              valueColor: AlwaysStoppedAnimation<Color>(progressColor),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('PROGRESS', style: TextStyle(color: Colors.grey, fontSize: 6, fontWeight: FontWeight.bold)),
+              Text('${attr.xp}/${reqXp} XP', style: const TextStyle(color: Colors.grey, fontSize: 6, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDynamicStateRow(String label, int val, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(
+              label,
+              style: const TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold),
+            ),
+          ),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: LinearProgressIndicator(
+                value: val / 100.0,
+                minHeight: 4,
+                backgroundColor: const Color(0xFF020617),
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 30,
+            child: Text(
+              '$val%',
+              textAlign: TextAlign.end,
+              style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
             ),
           ),
         ],

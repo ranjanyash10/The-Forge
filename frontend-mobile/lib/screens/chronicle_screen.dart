@@ -297,107 +297,85 @@ class _ChronicleScreenState extends State<ChronicleScreen> with SingleTickerProv
         children: [
           Row(
             children: [
-              const Icon(Icons.edit_note, color: Color(0xFF06B6D4), size: 18),
-              const SizedBox(width: 6),
-              const Text('INSCRIBE DAILY CHRONICLE', style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
+              const Icon(Icons.history_edu, color: Color(0xFFD97706), size: 18),
+              const SizedBox(width: 8),
+              const Text('THE CHRONICLER PORTAL', style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
             ],
           ),
           const SizedBox(height: 4),
           const Text(
-            'Report today\'s deeds to The System. Narratives evolve based on your diligence.',
+            "Inscribe today's journey through ambient conversational reflection. No sliders, no checkboxes.",
             style: TextStyle(color: Colors.grey, fontSize: 10),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
 
-          // Logger Form
+          // Portal Gate Card
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
             decoration: BoxDecoration(
-              color: const Color(0xFF090B15).withOpacity(0.6),
-              border: Border.all(color: const Color(0xFF3B0764).withOpacity(0.4)),
-              borderRadius: BorderRadius.circular(12),
+              color: const Color(0xFF090B15).withOpacity(0.4),
+              border: Border.all(color: const Color(0xFFD97706).withOpacity(0.3)),
+              borderRadius: BorderRadius.circular(4),
             ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('DEEDS OF THE DAY', style: TextStyle(color: Colors.grey, fontSize: 8, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: _notesController,
-                  maxLines: 6,
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                  decoration: const InputDecoration(
-                    hintText: 'Today I ran 5km, did 2 hours of focus coding on the database and secured a client meeting...',
-                    hintStyle: TextStyle(color: Colors.grey, fontSize: 11),
-                    border: OutlineInputBorder(),
-                    fillColor: Colors.black45,
-                    filled: true,
-                  ),
+                const Icon(
+                  Icons.vpn_key_outlined,
+                  color: Color(0xFFD97706),
+                  size: 32,
                 ),
                 const SizedBox(height: 16),
-                
-                // Mood Dropdown
-                DropdownButtonFormField<String>(
-                  value: _mood,
-                  dropdownColor: const Color(0xFF090B15),
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                  decoration: const InputDecoration(labelText: 'Dominant Mood', labelStyle: TextStyle(color: Colors.grey, fontSize: 10)),
-                  items: const [
-                    DropdownMenuItem(value: 'FOCUSED', child: Text('Focused')),
-                    DropdownMenuItem(value: 'DETERMINED', child: Text('Determined')),
-                    DropdownMenuItem(value: 'EXHAUSTED', child: Text('Exhausted')),
-                    DropdownMenuItem(value: 'REBUILDING', child: Text('Rebuilding')),
-                    DropdownMenuItem(value: 'FLOW', child: Text('Flow State')),
-                  ],
-                  onChanged: (v) => setState(() => _mood = v!),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _weightController,
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                  decoration: const InputDecoration(
-                    labelText: 'Weight Update (e.g. 78.5 kg)',
-                    labelStyle: TextStyle(color: Colors.grey, fontSize: 10),
-                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF3B0764))),
+                const Text(
+                  'AMBIENT PORTAL ACTIVE',
+                  style: TextStyle(
+                    fontFamily: 'Courier',
+                    color: Color(0xFFD97706),
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2.0,
+                    fontSize: 13,
                   ),
                 ),
-                const SizedBox(height: 16),
-
-                // Energy slider
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Energy Quotient', style: TextStyle(color: Colors.grey, fontSize: 11)),
-                    Text('${_energy.toInt()}/10', style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
-                  ],
-                ),
-                Slider(
-                  min: 1,
-                  max: 10,
-                  divisions: 9,
-                  value: _energy,
-                  activeColor: const Color(0xFF06B6D4),
-                  inactiveColor: Colors.black,
-                  onChanged: (v) => setState(() => _energy = v),
-                ),
-                const SizedBox(height: 16),
-
-                ElevatedButton(
-                  onPressed: _submitting ? null : () => _submitChronicle(state),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF701A75),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                const SizedBox(height: 8),
+                Text(
+                  'The System evaluates your narratives dynamically, adjusting state metrics and evaluating active quests/phases automatically.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.white.withOpacity(0.6),
+                    height: 1.5,
                   ),
-                  child: Text(
-                    _submitting ? 'TRANSLATING RECONSTRUCTION...' : 'INSCRIBE IN CHRONICLE',
-                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1),
+                ),
+                const SizedBox(height: 28),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFD97706),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.zero,
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.pushNamed(context, '/open_chronicle');
+                    },
+                    child: const Text(
+                      'OPEN REFLECTION PORTAL',
+                      style: TextStyle(
+                        fontFamily: 'Courier',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 32),
           _buildCalendarView(state),
         ],
       ),

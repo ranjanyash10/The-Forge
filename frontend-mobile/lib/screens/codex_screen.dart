@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/game_state.dart';
@@ -231,7 +232,218 @@ class _CodexScreenState extends State<CodexScreen> {
               ),
               const SizedBox(height: 24),
 
-              // 4. Snapshots Timeline
+              // 4. Narrative Codex
+              const Row(
+                children: [
+                  Icon(Icons.book_outlined, color: Color(0xFFD97706), size: 16),
+                  SizedBox(width: 6),
+                  Text('SYSTEM NARRATIVE CODEX', style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (state.codexEntries.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: Colors.black.withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
+                  child: const Text('No codex entries captured. Continue journaling in Log.', style: TextStyle(color: Colors.grey, fontSize: 10)),
+                )
+              else
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: state.codexEntries.length,
+                  itemBuilder: (context, index) {
+                    final entry = state.codexEntries[index];
+                    
+                    // Find source assertion
+                    SystemAssertion? sourceAssertion;
+                    if (entry.linkedEntities.isNotEmpty) {
+                      try {
+                        final parsed = jsonDecode(entry.linkedEntities);
+                        final sourceId = parsed['source_assertion'];
+                        if (sourceId != null) {
+                          sourceAssertion = state.systemAssertions.firstWhere((a) => a.id == sourceId);
+                        }
+                      } catch (_) {}
+                    }
+                    
+                    final isRetconned = entry.isRetconned;
+                    final importance = entry.importance;
+                    final type = entry.type;
+                    
+                    Color accentColor = Colors.grey;
+                    IconData typeIcon = Icons.book_outlined;
+                    
+                    if (type == 'BELIEF') {
+                      accentColor = const Color(0xFFF59E0B);
+                      typeIcon = Icons.psychology_outlined;
+                    } else if (type == 'TURNING_POINT') {
+                      accentColor = const Color(0xFFA855F7);
+                      typeIcon = Icons.bolt_outlined;
+                    } else if (type == 'DECLARATION') {
+                      accentColor = const Color(0xFF06B6D4);
+                      typeIcon = Icons.campaign_outlined;
+                    } else if (type == 'SILENCE_GAP') {
+                      accentColor = Colors.white24;
+                      typeIcon = Icons.snooze_outlined;
+                    }
+                    
+                    if (importance == 'EPIC') {
+                      accentColor = const Color(0xFFA855F7);
+                    } else if (importance == 'LEGENDARY') {
+                      accentColor = const Color(0xFFD97706);
+                    }
+                    
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      color: const Color(0xFF060814).withOpacity(0.8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        side: BorderSide(
+                          color: isRetconned ? const Color(0xFFF59E0B).withOpacity(0.3) : accentColor.withOpacity(0.15),
+                        ),
+                      ),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: () {
+                          // Format evidence list
+                          List<String> evidence = [];
+                          if (sourceAssertion != null) {
+                            try {
+                              final parsed = jsonDecode(sourceAssertion.evidenceLogs) as List;
+                              evidence = parsed.map((item) {
+                                if (item is Map) {
+                                  final entity = item['matched_active_entity'] ?? '';
+                                  final status = item['resolution_status'] ?? '';
+                                  return '$entity ($status)';
+                                }
+                                return item.toString();
+                              }).toList();
+                            } catch (_) {}
+                          }
+                          if (evidence.isEmpty) {
+                            evidence = [
+                              'Narrative Class: ${entry.type}',
+                              'Raw Quote: ${entry.rawUserQuote}',
+                              if (entry.retconReason != null && entry.retconReason!.isNotEmpty)
+                                'Retcon Reason: ${entry.retconReason}',
+                            ];
+                          }
+                          
+                          Navigator.pushNamed(
+                            context,
+                            '/assertion_detail',
+                            arguments: {
+                              'id': entry.id,
+                              'claimText': entry.narrativeState,
+                              'confidenceScore': sourceAssertion?.confidenceScore ?? 1.0,
+                              'empiricalEvidence': evidence,
+                              'isRetconned': entry.isRetconned,
+                            },
+                          );
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(typeIcon, color: accentColor, size: 14),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        '$type - $importance',
+                                        style: TextStyle(
+                                          color: accentColor.withOpacity(0.8),
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.bold,
+                                          fontFamily: 'Courier',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (isRetconned)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0x22F59E0B),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Text(
+                                        'RETCONNED',
+                                        style: TextStyle(
+                                          color: Color(0xFFF59E0B),
+                                          fontSize: 7,
+                                          fontWeight: FontWeight.bold,
+                                          fontFamily: 'Courier',
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                entry.narrativeState,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '"${entry.rawUserQuote}"',
+                                style: TextStyle(
+                                  color: Colors.grey.shade400,
+                                  fontSize: 10,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    entry.createdAt.split('T')[0],
+                                    style: const TextStyle(
+                                      color: Colors.white38,
+                                      fontSize: 8,
+                                      fontFamily: 'Courier',
+                                    ),
+                                  ),
+                                  const Row(
+                                    children: [
+                                      Text(
+                                        'INSPECT EVIDENCE',
+                                        style: TextStyle(
+                                          color: Color(0xFF06B6D4),
+                                          fontSize: 8,
+                                          fontWeight: FontWeight.bold,
+                                          fontFamily: 'Courier',
+                                        ),
+                                      ),
+                                      SizedBox(width: 2),
+                                      Icon(Icons.chevron_right, color: Color(0xFF06B6D4), size: 10),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              const SizedBox(height: 24),
+
+              // 5. Snapshots Timeline
               const Row(
                 children: [
                   Icon(Icons.history, color: Colors.amber, size: 16),
